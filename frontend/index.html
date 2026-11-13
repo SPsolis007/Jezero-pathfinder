@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mars Pathfinder | Mission Control</title>
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <header>
+    <h1>MARS PATHFINDER</h1>
+    <span>Mission Control | Prototype</span>
+  </header>
+
+  <main>
+    <aside class="sidebar">
+      <h2>Mission Controls</h2>
+
+      <label for="objective">Scientific objective</label>
+      <select id="objective">
+        <option value="sedimentary">Investigate sedimentary deposits</option>
+        <option value="geology">Explore geological boundaries</option>
+        <option value="minerals">Investigate mineral evidence</option>
+      </select>
+
+      <h3>Map Layers</h3>
+      <label><input type="checkbox" checked disabled> Mars imagery</label>
+      <label><input type="checkbox" id="show-sites" checked> Scientific sites</label>
+
+      <h3>Mission Status</h3>
+      <p id="status">Initialising Mars map...</p>
+    </aside>
+
+    <section id="map"></section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
