@@ -1,13 +1,46 @@
+
 "use strict";
+
+// ==========================================
+// MARS PATHFINDER
+// Phase 3: Jezero Crater Mission Area
+// ==========================================
 
 const statusElement = document.getElementById("status");
 const objectiveSelect = document.getElementById("objective");
 const sitesCheckbox = document.getElementById("show-sites");
 
+// NASA Mars Trek global equirectangular tiles:
+// zoom 0 = 512 x 256 pixels
+// longitude: -180 to +180 degrees
+// latitude: +90 to -90 degrees
+
+const BASE_WIDTH = 512;
+const BASE_HEIGHT = 256;
+
+function marsToMap(latitude, longitude) {
+  const x = ((longitude + 180) / 360) * BASE_WIDTH;
+  const y = ((90 - latitude) / 180) * BASE_HEIGHT;
+
+  // Leaflet CRS.Simple uses negative y for image rows.
+  return [-y, x];
+}
+
+function mapToMars(position) {
+  const longitude = (position.lng / BASE_WIDTH) * 360 - 180;
+  const latitude = 90 + (position.lat / BASE_HEIGHT) * 180;
+
+  return { latitude, longitude };
+}
+
+// ------------------------------------------
+// Initialise map
+// ------------------------------------------
+
 const map = L.map("map", {
   crs: L.CRS.Simple,
   minZoom: 0,
-  maxZoom: 5,
+  maxZoom: 12,
   zoomControl: true,
   attributionControl: true
 });
@@ -19,48 +52,104 @@ const NASA_TILE_URL =
 
 const marsTiles = L.tileLayer(NASA_TILE_URL, {
   minZoom: 0,
-  maxZoom: 5,
+  maxNativeZoom: 5,
+  maxZoom: 12,
   tileSize: 256,
   noWrap: true,
+  bounds: [[-256, 0], [0, 512]],
   attribution: "NASA Mars Trek | MGS MOLA"
-});
+}).addTo(map);
 
-marsTiles.addTo(map);
+// ------------------------------------------
+// Jezero Crater
+// ------------------------------------------
 
-map.setView([-128, 256], 0);
+const JEZERO = {
+  name: "Jezero Crater",
+  latitude: 18.4,
+  longitude: 77.5
+};
+
+map.setView(
+  marsToMap(JEZERO.latitude, JEZERO.longitude),
+  6
+);
+
+// This marker identifies the approximate
+// Jezero Crater study area, not a landing site.
+
+const studyArea = L.circleMarker(
+  marsToMap(JEZERO.latitude, JEZERO.longitude),
+  {
+    radius: 9,
+    color: "#ffffff",
+    weight: 2,
+    fillColor: "#ff7b35",
+    fillOpacity: 0.9
+  }
+).addTo(map);
+
+studyArea.bindPopup(
+  "<strong>Jezero Crater</strong>" +
+  "<p>Mars Pathfinder study area</p>" +
+  "<p>Approx. 18.4°N, 77.5°E</p>"
+);
+
+// ------------------------------------------
+// Scientific objectives
+// ------------------------------------------
 
 const scientificSites = L.layerGroup().addTo(map);
 
+// These are conceptual regional targets.
+// They are NOT verified sampling locations.
+
 const sampleSites = [
   {
-    name: "Candidate Site A",
-    position: [-120, 230],
+    name: "Delta investigation",
+    latitude: 18.45,
+    longitude: 77.40,
     description:
-      "Illustrative sedimentary investigation target"
+      "Investigate sedimentary environments associated with the ancient delta."
   },
   {
-    name: "Candidate Site B",
-    position: [-140, 280],
+    name: "Crater geology",
+    latitude: 18.38,
+    longitude: 77.55,
     description:
-      "Illustrative geological boundary target"
+      "Investigate regional geological characteristics."
   },
   {
-    name: "Candidate Site C",
-    position: [-100, 310],
+    name: "Mineral investigation",
+    latitude: 18.42,
+    longitude: 77.48,
     description:
-      "Illustrative mineral investigation target"
+      "Investigate candidate mineralogical evidence."
   }
 ];
 
 sampleSites.forEach((site) => {
-  L.marker(site.position)
+  L.circleMarker(
+    marsToMap(site.latitude, site.longitude),
+    {
+      radius: 7,
+      color: "#ffffff",
+      weight: 2,
+      fillColor: "#4da6ff",
+      fillOpacity: 0.9
+    }
+  )
     .bindPopup(
       `<strong>${site.name}</strong>` +
       `<p>${site.description}</p>` +
-      `<small>Demonstration location only</small>`
+      `<small>Conceptual target, not validated</small>`
     )
     .addTo(scientificSites);
 });
+
+// ------------------------------------------
+// Layer controls
+// ------------------------------------------
 
 sitesCheckbox.addEventListener("change", (event) => {
   if (event.target.checked) {
@@ -70,54 +159,53 @@ sitesCheckbox.addEventListener("change", (event) => {
   }
 });
 
-objectiveSelect.addEventListener("change", (event) => {
-  const selected =
-    event.target.options[event.target.selectedIndex];
+// ------------------------------------------
+// Scientific objective selector
+// ------------------------------------------
 
+objectiveSelect.addEventListener("change", () => {
   statusElement.textContent =
-    `Scientific objective selected: ${selected.text}`;
+    `Objective: ${objectiveSelect.selectedOptions[0].text}`;
 });
 
-let loadedTileCount = 0;
-let failedTileCount = 0;
+// ------------------------------------------
+// Display clicked Mars coordinates
+// ------------------------------------------
+
+map.on("click", (event) => {
+  const coordinates = mapToMars(event.latlng);
+
+  L.popup()
+    .setLatLng(event.latlng)
+    .setContent(
+      `<strong>Mars coordinates</strong>` +
+      `<p>Latitude: ${coordinates.latitude.toFixed(5)}°</p>` +
+      `<p>Longitude: ${coordinates.longitude.toFixed(5)}°E</p>`
+    )
+    .openOn(map);
+});
+
+// ------------------------------------------
+// Tile status
+// ------------------------------------------
+
+let successfulTiles = 0;
 
 marsTiles.on("tileload", () => {
-  loadedTileCount++;
-
+  successfulTiles++;
   statusElement.textContent =
-    `NASA Mars imagery loaded (${loadedTileCount} tiles)`;
+    `Jezero study area | ${successfulTiles} tiles loaded`;
 });
 
 marsTiles.on("tileerror", (error) => {
-  failedTileCount++;
-
-  console.error(
-    "Mars tile failed:",
-    error.tile ? error.tile.src : error
-  );
-
-  if (loadedTileCount === 0) {
+  console.error("Tile error:", error);
+  if (successfulTiles === 0) {
     statusElement.textContent =
-      `Mars imagery unavailable (${failedTileCount} tile errors). ` +
-      "Check the browser console.";
-  }
-});
-
-marsTiles.on("load", () => {
-  if (loadedTileCount > 0) {
-    statusElement.textContent =
-      "NASA Mars topographic tiles loaded successfully";
-  } else {
-    statusElement.textContent =
-      "No Mars imagery loaded. Check the tile endpoint.";
+      "Mars imagery unavailable. Check console.";
   }
 });
 
 statusElement.textContent =
-  "Connecting to NASA Mars Trek...";
+  "Loading Jezero Crater study area...";
 
-console.log("Mars Pathfinder frontend initialised");
-console.log("Mars imagery source:", NASA_TILE_URL);
-console.log(
-  "Note: Scientific site positions are illustrative."
-);
+console.log("Mars Pathfinder: Jezero Crater mode");
