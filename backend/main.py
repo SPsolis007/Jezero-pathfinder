@@ -8,6 +8,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from backend.terrain_analysis import (
+    analyse_route_terrain,
+    TerrainAnalysisError
+)
+from backend.energy_model import (
+    calculate_terrain_energy,
+    EnergyModelError
+)
+
 try:
     from backend.routing import calculate_route, RoutingError
 except ModuleNotFoundError:
@@ -282,48 +291,64 @@ def calculate_roundtrip(request: MissionRequest):
         outbound = calculate_route(
             start={
                 "latitude": BASE_CAMP["latitude"],
-                "longitude": BASE_CAMP["longitude"]
+                "longitude": BASE_CAMP["longitude"],
             },
             destination=request.destination.model_dump(),
-            mode=request.mode
+            mode=request.mode,
         )
-
     except RoutingError as error:
         raise HTTPException(
             status_code=error.status_code,
-            detail=str(error)
+            detail=str(error),
         )
 
-    # The current hazard graph is static and symmetric.
-    # Returning along the same path is a valid modelled
-    # route, but not an independently assessed alternative.
-    return_coordinates = list(
-        reversed(outbound["coordinates"])
-    )
+    try:
+        terrain = analyse_route_terrain(
+            outbound["coordinates"]
+        )
+        energy = calculate_terrain_energy(
+            terrain,
+            baseline_kwh_per_km=request.energy_kwh_per_km,
+        )
+    except (
+        TerrainAnalysisError,
+        EnergyModelError,
+        ValueError,
+        KeyError,
+    ) as error:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Terrain energy analysis failed: {error}",
+        )
 
     outbound_km = outbound["distance_km"]
     return_km = outbound_km
     total_km = outbound_km + return_km
 
-    travel_hours = total_km / request.speed_kmh
-
-    total_hours = (
-        travel_hours +
-        request.science_activity_hours
+    return_coordinates = list(
+        reversed(outbound["coordinates"])
     )
 
-    travel_energy = (
+    outbound_energy = energy["total_energy_kwh"]
+    return_energy = outbound_energy
+    travel_energy = outbound_energy + return_energy
+
+    baseline_energy = (
         total_km * request.energy_kwh_per_km
     )
 
-    energy_limit = (
-        request.available_energy_kwh *
-        (1 - request.energy_reserve_fraction)
+    travel_hours = total_km / request.speed_kmh
+    total_hours = (
+        travel_hours + request.science_activity_hours
     )
 
+    energy_limit = (
+        request.available_energy_kwh
+        * (1 - request.energy_reserve_fraction)
+    )
     time_limit = (
-        request.maximum_mission_hours *
-        (1 - request.time_reserve_fraction)
+        request.maximum_mission_hours
+        * (1 - request.time_reserve_fraction)
     )
 
     energy_margin = energy_limit - travel_energy
@@ -331,13 +356,13 @@ def calculate_roundtrip(request: MissionRequest):
 
     energy_pass = energy_margin >= 0
     time_pass = time_margin >= 0
-
     feasible = energy_pass and time_pass
 
-    if feasible:
-        assessment = "WITHIN MODELLED BUDGET"
-    else:
-        assessment = "EXCEEDS MODELLED BUDGET"
+    assessment = (
+        "WITHIN MODELLED BUDGET"
+        if feasible
+        else "EXCEEDS MODELLED BUDGET"
+    )
 
     return {
         "status": "success",
@@ -347,50 +372,60 @@ def calculate_roundtrip(request: MissionRequest):
         "outbound": {
             "distance_km": outbound_km,
             "coordinates": outbound["coordinates"],
-            "class_2_fraction": outbound[
-                "class_2_fraction"
-            ]
+            "class_2_fraction": outbound["class_2_fraction"],
+            "terrain_energy_kwh": round(outbound_energy, 4),
         },
         "return": {
             "distance_km": return_km,
             "coordinates": return_coordinates,
-            "method": "Reverse of outbound route"
+            "method": "Reverse of outbound route",
+            "terrain_energy_kwh": round(return_energy, 4),
+        },
+        "terrain": terrain,
+        "energy_analysis": {
+            "model": "terrain_adjusted_prototype",
+            "baseline_roundtrip_energy_kwh": round(
+                baseline_energy, 4
+            ),
+            "terrain_penalty_kwh": round(
+                travel_energy - baseline_energy, 4
+            ),
+            "outbound_energy_kwh": round(
+                outbound_energy, 4
+            ),
+            "return_energy_kwh": round(
+                return_energy, 4
+            ),
+            "total_travel_energy_kwh": round(
+                travel_energy, 4
+            ),
+            "outbound_breakdown": energy,
+            "return_assumption": (
+                "Same energy penalties in both directions; "
+                "uphill/downhill effects not modelled."
+            ),
         },
         "mission": {
-            "roundtrip_distance_km": round(
-                total_km, 3
-            ),
-            "travel_hours": round(
-                travel_hours, 2
-            ),
+            "roundtrip_distance_km": round(total_km, 3),
+            "travel_hours": round(travel_hours, 2),
             "science_hours": request.science_activity_hours,
             "total_hours": round(total_hours, 2),
-            "travel_energy_kwh": round(
-                travel_energy, 2
-            ),
-            "usable_energy_kwh": round(
-                energy_limit, 2
-            ),
-            "usable_time_hours": round(
-                time_limit, 2
-            ),
-            "energy_margin_kwh": round(
-                energy_margin, 2
-            ),
-            "time_margin_hours": round(
-                time_margin, 2
-            ),
+            "travel_energy_kwh": round(travel_energy, 2),
+            "usable_energy_kwh": round(energy_limit, 2),
+            "usable_time_hours": round(time_limit, 2),
+            "energy_margin_kwh": round(energy_margin, 2),
+            "time_margin_hours": round(time_margin, 2),
             "energy_pass": energy_pass,
             "time_pass": time_pass,
             "within_modelled_budget": feasible,
-            "assessment": assessment
+            "assessment": assessment,
         },
         "limitations": [
-            "Hypothetical rover speed and energy consumption",
-            "Static symmetric terrain model",
-            "Return path reverses the outbound route",
-            "No weather, radiation or life-support model",
-            "No elevation-dependent propulsion model",
-            "Not an operational human safety certification"
-        ]
+            "Hypothetical energy coefficients",
+            "Terrain sampled along route geometry",
+            "Return reverses outbound route",
+            "Uphill/downhill effects not modelled",
+            "No weather, radiation, or life-support model",
+            "Not an operational safety certification",
+        ],
     }
