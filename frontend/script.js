@@ -1050,77 +1050,136 @@ async function requestRoundTrip(destination) {
 // -----------------------------------------------------
 
 function displayRoundTrip(data) {
-  const results = document.getElementById(
-    "roundtrip-results"
-  );
-
+  const results = document.getElementById("roundtrip-results");
   clearElement(results);
 
-  const mission = data.mission;
+  const mission = data.mission || {};
+  const terrain = data.terrain || {};
+  const energy = data.energy_analysis || {};
 
-  addResultRow(
-    results,
-    "Assessment",
-    mission.assessment
-  );
+  // The API may nest outbound results or return a direct summary.
+  const terrainSummary = terrain.outbound || terrain.route || terrain;
+  const energySummary = energy.outbound || energy.route || energy;
 
-  addResultRow(
-    results,
-    "Round-trip distance",
-    `${mission.roundtrip_distance_km} km`
-  );
+  const finite = value =>
+    value !== null && value !== undefined && value !== "" &&
+    Number.isFinite(Number(value)) ? Number(value) : null;
+  const first = (...values) => {
+    for (const value of values) {
+      const number = finite(value);
+      if (number !== null) return number;
+    }
+    return null;
+  };
+  const fmt = (value, unit = "", digits = 2) => {
+    const number = finite(value);
+    return number === null ? "Not reported" :
+      `${number.toFixed(digits)}${unit ? ` ${unit}` : ""}`;
+  };
+  const element = (tag, className, content) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (content !== undefined) node.textContent = String(content);
+    return node;
+  };
+  const section = title => {
+    const node = element("section", "mission-dashboard-section");
+    node.appendChild(element("h4", "mission-section-title", title));
+    results.appendChild(node);
+    return node;
+  };
+  const metric = (parent, label, value, tone = "") => {
+    const card = element("div", `mission-metric ${tone}`.trim());
+    card.appendChild(element("span", "mission-metric-label", label));
+    card.appendChild(element("strong", "mission-metric-value", value));
+    parent.appendChild(card);
+  };
+  const row = (parent, label, value) => {
+    const line = element("div", "mission-detail-row");
+    line.appendChild(element("span", "", label));
+    line.appendChild(element("strong", "", value));
+    parent.appendChild(line);
+  };
+  const budget = (parent, title, used, usable, unit, passed) => {
+    const group = element("div", "mission-budget");
+    const header = element("div", "mission-budget-header");
+    header.appendChild(element("span", "", title));
+    header.appendChild(element("strong", passed === false ? "mission-fail" : "", passed === true ? "PASS" : passed === false ? "FAIL" : "NOT ASSESSED"));
+    group.appendChild(header);
+    row(group, "Estimated / usable", `${fmt(used, unit)} / ${fmt(usable, unit)}`);
+    const track = element("div", "mission-budget-track");
+    const fill = element("div", "mission-budget-fill");
+    if (finite(used) !== null && finite(usable) !== null && Number(usable) > 0) {
+      const ratio = Math.max(0, Number(used) / Number(usable));
+      fill.style.width = `${Math.min(100, ratio * 100)}%`;
+      if (ratio > 1 || passed === false) fill.classList.add("over-budget");
+    } else {
+      fill.style.width = "0%";
+    }
+    track.appendChild(fill);
+    group.appendChild(track);
+    parent.appendChild(group);
+  };
 
-  addResultRow(
-    results,
-    "Travel time",
-    `${mission.travel_hours} hours`
-  );
+  const passed = mission.within_modelled_budget === true;
+  const failed = mission.within_modelled_budget === false;
+  const verdict = element("div", `mission-verdict ${passed ? "pass" : failed ? "fail" : "unknown"}`);
+  verdict.appendChild(element("strong", "", passed ? "WITHIN MODELLED BUDGET" : failed ? "RESOURCE BUDGET EXCEEDED" : "MISSION ASSESSMENT"));
+  verdict.appendChild(element("p", "", mission.assessment || "No assessment supplied by the API."));
+  results.appendChild(verdict);
 
-  addResultRow(
-    results,
-    "Total mission duration",
-    `${mission.total_hours} hours`
-  );
+  const overview = section("Mission overview");
+  const cards = element("div", "mission-metric-grid");
+  metric(cards, "Round-trip distance", fmt(mission.roundtrip_distance_km, "km"));
+  metric(cards, "Total mission time", fmt(mission.total_hours, "h"));
+  metric(cards, "Travel energy", fmt(mission.travel_energy_kwh, "kWh"));
+  metric(cards, "Energy margin", fmt(mission.energy_margin_kwh, "kWh"), finite(mission.energy_margin_kwh) < 0 ? "negative" : "");
+  overview.appendChild(cards);
 
-  addResultRow(
-    results,
-    "Travel energy",
-    `${mission.travel_energy_kwh} kWh`
-  );
+  const energyBlock = section("Terrain-adjusted energy");
+  const energyCards = element("div", "mission-metric-grid");
+  // Energy-model outputs are per outbound leg; the return uses the reversed route.
+  const baselineLeg = first(energySummary.baseline_energy_kwh, energy.baseline_energy_kwh);
+  const adjustedLeg = first(energySummary.total_energy_kwh, energy.total_energy_kwh);
+  const slopeLeg = first(energySummary.slope_penalty_kwh, energy.slope_penalty_kwh);
+  const ruggedLeg = first(energySummary.ruggedness_penalty_kwh, energy.ruggedness_penalty_kwh);
+  const baselineRoundTrip = baselineLeg === null ? null : 2 * baselineLeg;
+  const adjustedRoundTrip = first(mission.travel_energy_kwh, adjustedLeg === null ? null : 2 * adjustedLeg);
+  metric(energyCards, "Baseline, round trip", fmt(baselineRoundTrip, "kWh"));
+  metric(energyCards, "Adjusted, round trip", fmt(adjustedRoundTrip, "kWh"));
+  metric(energyCards, "Slope adjustment", fmt(slopeLeg === null ? null : 2 * slopeLeg, "kWh"));
+  metric(energyCards, "Ruggedness adjustment", fmt(ruggedLeg === null ? null : 2 * ruggedLeg, "kWh"));
+  energyBlock.appendChild(energyCards);
+  const delta = baselineRoundTrip !== null && adjustedRoundTrip !== null && baselineRoundTrip > 0
+    ? (adjustedRoundTrip / baselineRoundTrip - 1) * 100 : null;
+  row(energyBlock, "Terrain adjustment vs baseline", fmt(delta, "%", 1));
 
-  addResultRow(
-    results,
-    "Energy margin",
-    `${mission.energy_margin_kwh} kWh`
-  );
+  const terrainBlock = section("Sampled terrain conditions");
+  row(terrainBlock, "Mean slope", fmt(first(terrainSummary.mean_slope_deg, terrain.mean_slope_deg), "°"));
+  row(terrainBlock, "Maximum sampled slope", fmt(first(terrainSummary.max_sampled_slope_deg, terrain.max_sampled_slope_deg), "°"));
+  row(terrainBlock, "Mean TRI", fmt(first(terrainSummary.mean_tri, terrain.mean_tri)));
+  row(terrainBlock, "Maximum sampled TRI", fmt(first(terrainSummary.max_sampled_tri, terrain.max_sampled_tri)));
+  row(terrainBlock, "Terrain samples", fmt(first(terrainSummary.sample_count, terrain.sample_count), "", 0));
+  const coverage = first(terrainSummary.coverage, terrain.coverage);
+  row(terrainBlock, "Terrain data coverage", coverage === null ? "Not reported" : `${(coverage * 100).toFixed(1)}%`);
 
-  addResultRow(
-    results,
-    "Time margin",
-    `${mission.time_margin_hours} hours`
-  );
+  const budgetBlock = section("Resource reserves");
+  budget(budgetBlock, "Energy budget", mission.travel_energy_kwh, mission.usable_energy_kwh, "kWh", mission.energy_pass);
+  budget(budgetBlock, "Time budget", mission.total_hours, mission.usable_time_hours, "h", mission.time_pass);
+  row(budgetBlock, "Energy remaining after reserve", fmt(mission.energy_margin_kwh, "kWh"));
+  row(budgetBlock, "Time remaining after reserve", fmt(mission.time_margin_hours, "h"));
 
-  addResultRow(
-    results,
-    "Energy budget",
-    mission.energy_pass ? "PASS" : "FAIL"
-  );
-
-  addResultRow(
-    results,
-    "Time budget",
-    mission.time_pass ? "PASS" : "FAIL"
-  );
-
-  const note = document.createElement("p");
-
-  note.className = "small-text";
-
-  note.textContent =
-    "Simulation only. The model does not " +
-    "certify astronaut safety or survivability.";
-
-  results.appendChild(note);
+  const warnings = section("Planning limitations");
+  const notes = [
+    "Prototype simulation only. It does not certify astronaut safety, rover reliability or landing suitability.",
+    "Energy coefficients and rover parameters are hypothetical, not calibrated against flight hardware.",
+    "The return leg reverses the outbound route; directional uphill and downhill energy effects are not modelled."
+  ];
+  if (mission.energy_pass === false) notes.unshift("WARNING: Estimated travel energy exceeds the usable energy budget.");
+  if (mission.time_pass === false) notes.unshift("WARNING: Estimated mission duration exceeds the usable time budget.");
+  if (coverage !== null && coverage < 0.999) notes.unshift("WARNING: Terrain raster coverage is incomplete along the sampled route.");
+  if (!data.terrain || !data.energy_analysis) notes.unshift("Detailed terrain or energy analysis was not included in this API response.");
+  notes.forEach(note => warnings.appendChild(element("p", "mission-warning-note", note)));
 }
 
 // -----------------------------------------------------
