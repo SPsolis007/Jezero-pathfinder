@@ -267,75 +267,81 @@ document.querySelectorAll(
 // 7. SCIENTIFIC SITES
 // -----------------------------------------------------
 
+
+const SCIENCE_SOURCE =
+  "https://doi.org/10.1029/2022JE007474";
+
 const sites = [
   {
-    name: "Delta investigation",
-    latitude: 18.45,
-    longitude: 77.40,
+    name: "Roubion",
+    latitude: 18.42769,
+    longitude: 77.45165,
 
     description:
-      "Conceptual investigation of ancient " +
-      "delta sedimentary deposits.",
+      "Documented Perseverance investigation site " +
+      "in the Máaz formation.",
 
     objective:
-      "Study ancient sedimentary environments.",
+      "Investigate basaltic igneous rocks and " +
+      "their geological history.",
 
     significance:
-      "Jezero Crater contains an ancient river " +
-      "delta. Sedimentary deposits may preserve " +
-      "evidence of past water-related environments.",
+      "Roubion provides evidence about the " +
+      "igneous crater floor and its subsequent " +
+      "geological evolution.",
 
     evidence:
-      "Regional geological context is supported " +
-      "by Mars mission science. The exact " +
-      "investigation point is conceptual."
+      "Published Perseverance investigation " +
+      "coordinates. A rock-core collection was " +
+      "attempted, but the material disaggregated. " +
+      "Source: " + SCIENCE_SOURCE
   },
 
   {
-    name: "Crater geology",
-    latitude: 18.38,
-    longitude: 77.55,
+    name: "Rochette",
+    latitude: 18.43074,
+    longitude: 77.44437,
 
     description:
-      "Conceptual investigation of " +
-      "crater-floor geological materials.",
+      "Documented Perseverance sampling outcrop " +
+      "associated with Artuby Ridge.",
 
     objective:
-      "Investigate geological materials " +
-      "on the crater floor.",
+      "Investigate basaltic rocks of the " +
+      "Máaz formation.",
 
     significance:
-      "Crater-floor rocks can provide " +
-      "information about Jezero Crater's " +
-      "geological history.",
+      "Perseverance collected the Montdenier " +
+      "and Montagnac cores here, supporting " +
+      "studies of crater-floor geology.",
 
     evidence:
-      "Regional geological interpretation " +
-      "is established. The exact target " +
-      "is not independently validated."
+      "Published sampling location and rock " +
+      "core records. Source: " + SCIENCE_SOURCE
   },
 
   {
-    name: "Mineral investigation",
-    latitude: 18.42,
-    longitude: 77.48,
+    name: "Brac",
+    latitude: 18.43397,
+    longitude: 77.44301,
 
     description:
-      "Conceptual investigation of " +
-      "possible mineralogical indicators.",
+      "Documented Perseverance sampling outcrop " +
+      "in the Séítah formation.",
 
     objective:
-      "Investigate possible mineralogical evidence.",
+      "Investigate ultramafic cumulate rocks " +
+      "and their formation history.",
 
     significance:
-      "Mineral composition can help " +
-      "scientists understand past " +
-      "geological and aqueous processes.",
+      "Perseverance collected the Salette and " +
+      "Coulettes cores here. These rocks help " +
+      "scientists investigate the early " +
+      "geological history of Jezero Crater.",
 
     evidence:
-      "This is an investigation objective, " +
-      "not a confirmed mineral detection " +
-      "at these exact coordinates."
+      "Published sampling location and rock " +
+      "core records. Source: " + SCIENCE_SOURCE
   }
 ];
 
