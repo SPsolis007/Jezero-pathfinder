@@ -1,61 +1,56 @@
 
 "use strict";
 
-// ======================================================
-// MARS PATHFINDER
-// PHASE 6E: SCIENTIFIC INVESTIGATION + TERRAIN HAZARDS
-//
-// NASA MOLA | Jezero CTX | Scientific Investigation
-// Mission Destination | Hazard Overlay | Diagnostics
-// ======================================================
+// =====================================================
+// MARS PATHFINDER | PHASE 7C
+// HUMAN EXPLORATION: BASE CAMP ALPHA
+// Scientific Investigation + A* Routing + Hazard Map
+// =====================================================
 
-// ======================================================
-// 1. DOM ELEMENTS
-// ======================================================
+const API = "http://127.0.0.1:8000";
+
+const BASE_CAMP = {
+  name: "Base Camp Alpha",
+  latitude: 18.4,
+  longitude: 77.5,
+  hypothetical: true
+};
 
 const statusElement = document.getElementById("status");
 const objectiveSelect = document.getElementById("objective");
 const sitesCheckbox = document.getElementById("show-sites");
 
 function setStatus(message) {
-  if (statusElement) {
-    statusElement.textContent = message;
-  }
+  if (statusElement) statusElement.textContent = message;
 }
 
 function setText(id, value) {
   const element = document.getElementById(id);
-
-  if (element) {
-    element.textContent = value;
-  }
+  if (element) element.textContent = value;
 }
 
-// ======================================================
-// 2. MARS COORDINATE DISPLAY
-// ======================================================
+function formatNumber(value, digits = 2) {
+  return Number(value).toFixed(digits);
+}
+
+// =====================================================
+// MARS MAP COORDINATES
+// =====================================================
 
 const BASE_WIDTH = 512;
 const BASE_HEIGHT = 256;
 
-// Mars coordinates to Leaflet's display grid.
-// This is the existing Mars Trek tile-display assumption.
-// Actual raster reprojection happens in Python.
-
 function marsToMap(latitude, longitude) {
-  const x = ((longitude + 180) / 360) * BASE_WIDTH;
-  const y = ((90 - latitude) / 180) * BASE_HEIGHT;
-
-  return [-y, x];
+  return [
+    -((90 - latitude) / 180) * BASE_HEIGHT,
+    ((longitude + 180) / 360) * BASE_WIDTH
+  ];
 }
 
 function mapToMars(position) {
   return {
-    latitude:
-      90 + (position.lat / BASE_HEIGHT) * 180,
-
-    longitude:
-      (position.lng / BASE_WIDTH) * 360 - 180
+    latitude: 90 + position.lat / BASE_HEIGHT * 180,
+    longitude: position.lng / BASE_WIDTH * 360 - 180
   };
 }
 
@@ -66,30 +61,20 @@ function marsBounds(south, west, north, east) {
   );
 }
 
-// ======================================================
-// 3. MAP INITIALISATION
-// ======================================================
+// =====================================================
+// MAP
+// =====================================================
 
 const map = L.map("map", {
   crs: L.CRS.Simple,
   minZoom: 0,
-  maxZoom: 13,
-  zoomControl: true
+  maxZoom: 13
 });
 
-const JEZERO = {
-  latitude: 18.4,
-  longitude: 77.5
-};
-
 map.setView(
-  marsToMap(JEZERO.latitude, JEZERO.longitude),
+  marsToMap(BASE_CAMP.latitude, BASE_CAMP.longitude),
   9
 );
-
-// ======================================================
-// 4. NASA MARS TREK IMAGERY
-// ======================================================
 
 const MOLA_URL =
   "https://trek.nasa.gov/tiles/Mars/EQ/" +
@@ -124,64 +109,40 @@ const ctx = L.tileLayer(CTX_URL, {
   maxZoom: 13,
   noWrap: true,
   bounds: ctxCoverage,
-  opacity: 1,
   attribution: "NASA Mars Trek | MRO CTX Jezero"
 }).addTo(map);
-
-// ======================================================
-// 5. CTX COVERAGE BOUNDARY
-// ======================================================
 
 const coverageOutline = L.rectangle(ctxCoverage, {
   color: "#00e5ff",
   weight: 2,
   fillOpacity: 0,
-  dashArray: "6, 6"
+  dashArray: "6,6"
 }).addTo(map);
 
 coverageOutline.bindPopup(
-  "<strong>Jezero CTX Mosaic Coverage</strong>" +
-  "<p>NASA Mars Trek imagery footprint.</p>" +
-  "<p>This boundary does not represent a hazard.</p>"
+  "NASA Jezero CTX imagery coverage"
 );
 
-// ======================================================
-// 6. SCIENTIFIC INVESTIGATION PANEL
-// ======================================================
+// =====================================================
+// SCIENTIFIC INVESTIGATION PANEL
+// =====================================================
 
-// Restore the original Scientific Investigation panel
-// if it is missing from the GitHub version of index.html.
+const sidebar = document.querySelector(".sidebar");
 
 function ensureScientificPanel() {
-  if (document.getElementById("science-title")) {
-    return;
-  }
-
-  const sidebar =
-    document.querySelector(".sidebar") ||
-    document.querySelector("aside");
-
-  if (!sidebar) {
-    console.warn(
-      "Sidebar not found. Scientific panel unavailable."
-    );
-    return;
-  }
+  if (document.getElementById("science-title")) return;
 
   const section = document.createElement("section");
-
   section.className = "scientific-investigation-section";
 
   section.innerHTML = `
     <h3>Scientific Investigation</h3>
 
     <div id="science-panel" class="science-panel">
-
       <h4 id="science-title">No site selected</h4>
 
       <p id="science-description">
-        Click an orange scientific marker to investigate
-        a potential research location.
+        Click an orange marker to investigate a site.
       </p>
 
       <div class="science-detail">
@@ -202,22 +163,18 @@ function ensureScientificPanel() {
       <div class="science-detail">
         <strong>Safety Assessment</strong>
         <p id="science-safety">
-          Awaiting site-specific terrain assessment.
+          Site-specific safety not assessed.
         </p>
       </div>
 
       <button id="select-destination" disabled>
         Set as Mission Destination
       </button>
-
     </div>
   `;
 
-  const statusHeading =
-    [...sidebar.querySelectorAll("h3")]
-      .find(element =>
-        element.textContent.trim() === "Mission Status"
-      );
+  const statusHeading = [...sidebar.querySelectorAll("h3")]
+    .find(h => h.textContent.trim() === "Mission Status");
 
   if (statusHeading) {
     sidebar.insertBefore(section, statusHeading);
@@ -228,81 +185,62 @@ function ensureScientificPanel() {
 
 ensureScientificPanel();
 
-// ======================================================
-// 7. SCIENTIFIC SITES
-// ======================================================
-
-const scientificSites = L.layerGroup().addTo(map);
+// =====================================================
+// SCIENTIFIC TARGETS
+// =====================================================
 
 const sites = [
   {
     name: "Delta investigation",
     latitude: 18.45,
     longitude: 77.40,
-
     description:
       "Conceptual investigation of ancient delta sediments.",
-
     objective:
       "Study ancient sedimentary environments.",
-
     significance:
-      "Jezero Crater contains an ancient river delta. " +
-      "Sedimentary deposits can preserve evidence of " +
-      "past water-related environments.",
-
+      "Jezero's ancient delta may preserve evidence " +
+      "of past water-related environments.",
     evidence:
-      "Regional interpretation supported by Mars mission " +
-      "science. The exact investigation point is conceptual."
+      "Regional scientific context. Exact coordinates " +
+      "are conceptual investigation targets."
   },
-
   {
     name: "Crater geology",
     latitude: 18.38,
     longitude: 77.55,
-
     description:
       "Conceptual investigation of crater-floor geology.",
-
     objective:
-      "Investigate geological materials on the crater floor.",
-
+      "Investigate crater-floor geological materials.",
     significance:
       "Crater-floor rocks provide information about " +
-      "Jezero Crater's geological history.",
-
+      "Jezero's geological evolution.",
     evidence:
-      "Regional geological context is established. " +
-      "This particular target remains conceptual."
+      "Regional geological interpretation. " +
+      "Exact target not independently validated."
   },
-
   {
     name: "Mineral investigation",
     latitude: 18.42,
     longitude: 77.48,
-
     description:
-      "Conceptual investigation of mineralogical evidence.",
-
+      "Conceptual mineralogical investigation.",
     objective:
       "Investigate possible mineralogical indicators.",
-
     significance:
-      "Mineral composition can help scientists understand " +
-      "past geological and aqueous processes.",
-
+      "Mineral composition may reveal past " +
+      "geological and aqueous processes.",
     evidence:
-      "This is an investigation objective, not a confirmed " +
-      "mineral detection at these exact coordinates."
+      "Investigation objective only. No confirmed " +
+      "mineral detection at this exact coordinate."
   }
 ];
 
+const scientificSites = L.layerGroup().addTo(map);
+
 let selectedScientificSite = null;
 let missionDestination = null;
-
-// ======================================================
-// 8. SCIENTIFIC PANEL UPDATES
-// ======================================================
 
 function updateSciencePanel(site) {
   selectedScientificSite = site;
@@ -315,25 +253,16 @@ function updateSciencePanel(site) {
 
   setText(
     "science-safety",
-    "Terrain hazard classification is available. " +
-    "Site-specific traversability has not yet been assessed."
+    "Terrain-aware routing available. " +
+    "Human safety and site suitability not validated."
   );
 
-  const button =
-    document.getElementById("select-destination");
+  document.getElementById(
+    "select-destination"
+  ).disabled = false;
 
-  if (button) {
-    button.disabled = false;
-  }
-
-  setStatus(
-    `Scientific investigation selected: ${site.name}`
-  );
+  setStatus(`Scientific site selected: ${site.name}`);
 }
-
-// ======================================================
-// 9. SCIENTIFIC MAP MARKERS
-// ======================================================
 
 sites.forEach(site => {
   const marker = L.circleMarker(
@@ -343,60 +272,174 @@ sites.forEach(site => {
       color: "#ffffff",
       weight: 2,
       fillColor: "#ff9633",
-      fillOpacity: 0.9
+      fillOpacity: 0.95
     }
   );
 
   marker.bindPopup(
     `<strong>${site.name}</strong>` +
     `<p>${site.description}</p>` +
-    "<small>Conceptual investigation target</small>"
+    "<small>Conceptual scientific target</small>"
   );
 
-  marker.on("click", () => {
-    updateSciencePanel(site);
-  });
-
+  marker.on("click", () => updateSciencePanel(site));
   marker.addTo(scientificSites);
 });
 
-// ======================================================
-// 10. MISSION DESTINATION SELECTION
-// ======================================================
+// =====================================================
+// BASE CAMP ALPHA
+// =====================================================
 
-const destinationButton =
-  document.getElementById("select-destination");
+const baseCampMarker = L.circleMarker(
+  marsToMap(BASE_CAMP.latitude, BASE_CAMP.longitude),
+  {
+    radius: 11,
+    color: "#ffffff",
+    weight: 3,
+    fillColor: "#238bff",
+    fillOpacity: 1
+  }
+).addTo(map);
 
-if (destinationButton) {
-  destinationButton.addEventListener("click", () => {
-    if (!selectedScientificSite) {
-      return;
-    }
+baseCampMarker.bindTooltip(
+  "BASE CAMP ALPHA",
+  {
+    permanent: false,
+    direction: "top"
+  }
+);
 
-    missionDestination = selectedScientificSite;
+baseCampMarker.bindPopup(
+  "<strong>BASE CAMP ALPHA</strong>" +
+  "<p>Hypothetical human exploration base camp</p>" +
+  "<p>Terrain screening pending</p>"
+);
 
-    map.flyTo(
-      marsToMap(
-        missionDestination.latitude,
-        missionDestination.longitude
-      ),
-      11
+function ensureBaseCampPanel() {
+  if (document.getElementById("basecamp-assessment")) {
+    return;
+  }
+
+  const section = document.createElement("section");
+  section.className = "basecamp-section";
+
+  section.innerHTML = `
+    <h3>Human Exploration Base Camp</h3>
+
+    <div class="basecamp-panel">
+      <p><strong>Base Camp Alpha</strong></p>
+
+      <p>Hypothetical candidate site</p>
+
+      <p>
+        Terrain assessment:
+        <strong id="basecamp-assessment">Loading...</strong>
+      </p>
+
+      <p>
+        Human survivability:
+        <strong>Not assessed</strong>
+      </p>
+
+      <p id="basecamp-details"></p>
+    </div>
+  `;
+
+  const scienceSection =
+    sidebar.querySelector(
+      ".scientific-investigation-section"
     );
 
-    setStatus(
-      `Mission destination selected: ${missionDestination.name}`
-    );
-
-    console.log(
-      "Mission destination:",
-      missionDestination
-    );
-  });
+  if (scienceSection) {
+    sidebar.insertBefore(section, scienceSection);
+  } else {
+    sidebar.appendChild(section);
+  }
 }
 
-// ======================================================
-// 11. LAYER CONTROL
-// ======================================================
+ensureBaseCampPanel();
+
+async function assessBaseCamp() {
+  try {
+    const response = await fetch(
+      `${API}/api/basecamp`
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.detail || "Terrain screening failed"
+      );
+    }
+
+    setText(
+      "basecamp-assessment",
+      data.assessment
+    );
+
+    setText(
+      "basecamp-details",
+      `Class 1: ${data.class_counts["1"]} cells | ` +
+      `Class 2: ${data.class_counts["2"]} cells | ` +
+      `Class 3: ${data.class_counts["3"]} cells | ` +
+      `Unknown: ${data.unknown_cells} cells`
+    );
+
+    baseCampMarker.setPopupContent(
+      "<strong>BASE CAMP ALPHA</strong>" +
+      `<p>${data.assessment}</p>` +
+      "<p>100 m terrain screening radius</p>" +
+      "<small>Hypothetical site. Not landing-certified.</small>"
+    );
+
+  } catch (error) {
+    setText(
+      "basecamp-assessment",
+      "Screening unavailable"
+    );
+
+    setText(
+      "basecamp-details",
+      error.message
+    );
+
+    console.error(error);
+  }
+}
+
+// =====================================================
+// DESTINATION SELECTION
+// =====================================================
+
+document.getElementById(
+  "select-destination"
+).addEventListener("click", () => {
+  if (!selectedScientificSite) return;
+
+  missionDestination = selectedScientificSite;
+
+  setText(
+    "routing-destination",
+    missionDestination.name
+  );
+
+  setStatus(
+    `Destination assigned: ${missionDestination.name}`
+  );
+
+  map.flyTo(
+    marsToMap(
+      missionDestination.latitude,
+      missionDestination.longitude
+    ),
+    10
+  );
+});
+
+// =====================================================
+// MAP LAYERS
+// =====================================================
 
 const layerControl = L.control.layers(
   {
@@ -404,7 +447,9 @@ const layerControl = L.control.layers(
   },
   {
     "Jezero CTX Imagery": ctx,
-    "CTX Coverage Boundary": coverageOutline
+    "CTX Coverage Boundary": coverageOutline,
+    "Scientific Sites": scientificSites,
+    "Base Camp Alpha": baseCampMarker
   },
   {
     collapsed: false,
@@ -412,14 +457,9 @@ const layerControl = L.control.layers(
   }
 ).addTo(map);
 
-// ======================================================
-// 12. REPROJECTED HAZARD OVERLAY
-// ======================================================
-
 let hazardLayer = null;
-let hazardMetadata = null;
 
-async function loadHazardOverlay() {
+async function loadHazards() {
   try {
     const response = await fetch(
       "assets/jezero_hazards.json",
@@ -427,338 +467,340 @@ async function loadHazardOverlay() {
     );
 
     if (!response.ok) {
-      throw new Error(
-        `Hazard metadata HTTP ${response.status}`
-      );
+      throw new Error("Hazard metadata unavailable");
     }
 
     const data = await response.json();
-
-    if (
-      !Array.isArray(data.bounds) ||
-      data.bounds.length !== 2
-    ) {
-      throw new Error("Invalid hazard metadata bounds");
-    }
-
     const [[south, west], [north, east]] = data.bounds;
 
     if (
       ![south, west, north, east].every(Number.isFinite) ||
       south >= north ||
-      west >= east
-    ) {
-      throw new Error("Invalid geographic coordinates");
-    }
-
-    if (
+      west >= east ||
       south < 15 ||
       north > 21 ||
       west < 75 ||
       east > 80
     ) {
-      throw new Error(
-        "Hazard raster is outside the Jezero region"
-      );
+      throw new Error("Invalid Mars hazard bounds");
     }
 
-    hazardMetadata = data;
-
     hazardLayer = L.imageOverlay(
-  `${data.image}?v=${Date.now()}`,
+      `${data.image}?v=${Date.now()}`,
       marsBounds(south, west, north, east),
       {
         opacity: 0.85,
-        interactive: false,
-        alt: "Jezero terrain hazard classification"
+        interactive: false
       }
     );
-
-    hazardLayer.on("load", () => {
-      console.log("Hazard image loaded successfully");
-    });
-
-    hazardLayer.on("error", () => {
-      console.error("Hazard image failed to load");
-
-      setStatus(
-        "Hazard image failed to load. Check browser console."
-      );
-    });
 
     layerControl.addOverlay(
       hazardLayer,
       "Jezero Terrain Hazards"
     );
 
-    console.log(
-      "Hazard metadata:",
-      hazardMetadata
-    );
-
-    console.log(
-      "Hazard geographic bounds:",
-      data.bounds
-    );
-
-    setStatus(
-      "Hazard classification ready. Enable it in Layers."
-    );
+    setStatus("Jezero hazard layer ready");
 
   } catch (error) {
-    console.error(
-      "Hazard overlay error:",
-      error
-    );
-
-    setStatus(
-      "Hazard overlay unavailable. Check browser console."
-    );
+    console.error(error);
+    setStatus("Hazard overlay unavailable");
   }
 }
 
-loadHazardOverlay();
+// =====================================================
+// PHASE 7C: INTERACTIVE ROUTE COMPARISON
+// =====================================================
 
-// ======================================================
-// 13. USER CONTROLS
-// ======================================================
+const routeLayer = L.layerGroup().addTo(map);
+
+function ensureRoutingPanel() {
+  if (document.getElementById("calculate-routes")) {
+    return;
+  }
+
+  const section = document.createElement("section");
+  section.className = "routing-section";
+
+  section.innerHTML = `
+    <h3>Mission Navigation</h3>
+
+    <p>
+      Starting point:
+      <strong>Base Camp Alpha</strong>
+    </p>
+
+    <p>
+      Destination:
+      <strong id="routing-destination">
+        Not assigned
+      </strong>
+    </p>
+
+    <button id="calculate-routes">
+      Calculate Mission Routes
+    </button>
+
+    <div id="routing-results"></div>
+  `;
+
+  const statusHeading = [...sidebar.querySelectorAll("h3")]
+    .find(h => h.textContent.trim() === "Mission Status");
+
+  if (statusHeading) {
+    sidebar.insertBefore(section, statusHeading);
+  } else {
+    sidebar.appendChild(section);
+  }
+}
+
+ensureRoutingPanel();
+
+async function requestRoute(mode) {
+  const response = await fetch(
+    `${API}/api/route`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        start: {
+          latitude: BASE_CAMP.latitude,
+          longitude: BASE_CAMP.longitude
+        },
+        destination: {
+          latitude: missionDestination.latitude,
+          longitude: missionDestination.longitude
+        },
+        mode
+      })
+    }
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.detail || `HTTP ${response.status}`
+    );
+  }
+
+  if (
+    !Array.isArray(data.coordinates) ||
+    data.coordinates.length < 2
+  ) {
+    throw new Error("No drawable route returned");
+  }
+
+  return data;
+}
+
+function drawRoute(data, mode) {
+  const color = mode === "safest"
+    ? "#00e5ff"
+    : "#ffb347";
+
+  const points = data.coordinates.map(
+    ([latitude, longitude]) =>
+      marsToMap(latitude, longitude)
+  );
+
+  const line = L.polyline(points, {
+    color,
+    weight: mode === "safest" ? 5 : 3,
+    opacity: 0.95,
+    dashArray: mode === "shortest"
+      ? "8,6"
+      : null
+  }).addTo(routeLayer);
+
+  line.bindPopup(
+    `<strong>${mode.toUpperCase()} ROUTE</strong>` +
+    `<p>Distance: ${data.distance_km} km</p>` +
+    `<p>Class 2 exposure: ${(
+      data.class_2_fraction * 100
+    ).toFixed(1)}%</p>` +
+    "<small>Prototype terrain-aware route</small>"
+  );
+
+  return line;
+}
+
+async function calculateMissionRoutes() {
+  if (!missionDestination) {
+    setStatus(
+      "Select a scientific destination first"
+    );
+    return;
+  }
+
+  const button = document.getElementById(
+    "calculate-routes"
+  );
+
+  const results = document.getElementById(
+    "routing-results"
+  );
+
+  button.disabled = true;
+  button.textContent = "Calculating...";
+
+  routeLayer.clearLayers();
+  results.replaceChildren();
+
+  setStatus("Calculating mission routes...");
+
+  try {
+    // Request both modes. A mode may fail independently.
+    const modes = ["safest", "shortest"];
+
+    const responses = await Promise.allSettled(
+      modes.map(mode => requestRoute(mode))
+    );
+
+    const lines = [];
+
+    responses.forEach((response, index) => {
+      const mode = modes[index];
+
+      const paragraph = document.createElement("p");
+
+      if (response.status === "fulfilled") {
+        const data = response.value;
+
+        lines.push(drawRoute(data, mode));
+
+        paragraph.textContent =
+          `${mode.toUpperCase()}: ` +
+          `${data.distance_km} km | ` +
+          `${(data.class_2_fraction * 100).toFixed(1)}% ` +
+          "Class 2 exposure";
+      } else {
+        paragraph.textContent =
+          `${mode.toUpperCase()}: ` +
+          response.reason.message;
+      }
+
+      results.appendChild(paragraph);
+    });
+
+    if (lines.length > 0) {
+      const bounds = L.featureGroup(
+        lines
+      ).getBounds();
+
+      map.fitBounds(bounds, {
+        padding: [50, 50],
+        maxZoom: 12
+      });
+
+      setStatus(
+        `${lines.length} mission route(s) calculated`
+      );
+    } else {
+      setStatus(
+        "No feasible routes within search limits"
+      );
+    }
+
+  } catch (error) {
+    console.error(error);
+    setStatus(`Routing error: ${error.message}`);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Calculate Mission Routes";
+  }
+}
+
+document.getElementById(
+  "calculate-routes"
+).addEventListener(
+  "click",
+  calculateMissionRoutes
+);
+
+// =====================================================
+// USER CONTROLS AND DIAGNOSTICS
+// =====================================================
 
 if (sitesCheckbox) {
-  sitesCheckbox.addEventListener("change", event => {
-    if (event.target.checked) {
-      map.addLayer(scientificSites);
-    } else {
-      map.removeLayer(scientificSites);
+  sitesCheckbox.addEventListener(
+    "change",
+    event => {
+      if (event.target.checked) {
+        map.addLayer(scientificSites);
+      } else {
+        map.removeLayer(scientificSites);
+      }
     }
-  });
-
-  if (!sitesCheckbox.checked) {
-    map.removeLayer(scientificSites);
-  }
+  );
 }
 
 if (objectiveSelect) {
-  objectiveSelect.addEventListener("change", () => {
-    setStatus(
-      `Objective: ${objectiveSelect.selectedOptions[0].text}`
-    );
-  });
+  objectiveSelect.addEventListener(
+    "change",
+    () => {
+      setStatus(
+        `Scientific objective: ${
+          objectiveSelect.selectedOptions[0].text
+        }`
+      );
+    }
+  );
 }
 
-// ======================================================
-// 14. MAP COORDINATE INSPECTION
-// ======================================================
-
 map.on("click", event => {
-  const coordinates = mapToMars(event.latlng);
+  const coords = mapToMars(event.latlng);
 
   L.popup()
     .setLatLng(event.latlng)
     .setContent(
-      "<strong>Mars Coordinates</strong>" +
-      `<p>Latitude: ${coordinates.latitude.toFixed(5)}°</p>` +
-      `<p>Longitude: ${coordinates.longitude.toFixed(5)}°E</p>`
+      `<strong>Mars Coordinates</strong>` +
+      `<p>${coords.latitude.toFixed(5)}° N</p>` +
+      `<p>${coords.longitude.toFixed(5)}° E</p>`
     )
     .openOn(map);
 });
 
-// ======================================================
-// 15. HAZARD AND CTX LAYER EVENTS
-// ======================================================
-
 map.on("overlayadd", event => {
-  if (event.layer === ctx) {
-    setStatus("Jezero CTX imagery enabled");
-  }
-
   if (event.layer === hazardLayer) {
-    setStatus(
-      "Terrain hazards enabled | Prototype classification"
-    );
+    setStatus("Terrain hazards enabled");
   }
 });
 
 map.on("overlayremove", event => {
-  if (event.layer === ctx) {
-    setStatus("MOLA topography active");
-  }
-
   if (event.layer === hazardLayer) {
-    setStatus("Terrain hazard overlay disabled");
+    setStatus("Terrain hazards hidden");
   }
 });
 
-// ======================================================
-// 16. TILE DIAGNOSTICS
-// ======================================================
-
-let molaLoaded = 0;
-let ctxLoaded = 0;
-let ctxErrors = 0;
-
-mola.on("tileload", () => {
-  molaLoaded++;
-
-  if (!map.hasLayer(ctx)) {
-    setStatus(
-      `MOLA topography active | ${molaLoaded} tiles loaded`
-    );
-  }
-});
+let ctxTiles = 0;
 
 ctx.on("tileload", () => {
-  ctxLoaded++;
+  ctxTiles++;
 
-  if (
-    !hazardLayer ||
-    !map.hasLayer(hazardLayer)
-  ) {
+  if (!routeLayer.getLayers().length) {
     setStatus(
-      `CTX imagery active | ${ctxLoaded} tiles loaded`
+      `CTX imagery active | ${ctxTiles} tiles loaded`
     );
   }
 });
 
 ctx.on("tileerror", event => {
-  ctxErrors++;
-
   console.error(
-    "CTX tile failed:",
-    event.tile?.src || event
-  );
-
-  setStatus(
-    `CTX tile errors: ${ctxErrors}. Check browser console.`
+    "CTX tile error:",
+    event.tile?.src
   );
 });
 
-// ======================================================
-// 17. INITIAL STATUS
-// ======================================================
+// =====================================================
+// INITIALISE
+// =====================================================
 
-setStatus(
-  "Jezero mission map ready. Loading hazard metadata..."
-);
+setStatus("Initialising human exploration mission...");
 
+loadHazards();
+assessBaseCamp();
 
-// ======================================================
-// PHASE 7B: FIRST A* ROUTE VISUALISATION
-// ======================================================
-
-const routeLayer = L.layerGroup().addTo(map);
-
-async function calculateAndDisplayRoute() {
-  setStatus("Calculating terrain-aware route...");
-
-  try {
-    const response = await fetch(
-      "http://127.0.0.1:8000/api/route",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          start: {
-            latitude: 18.4,
-            longitude: 77.5
-          },
-          destination: {
-            latitude: 18.42,
-            longitude: 77.48
-          },
-          mode: "safest"
-        })
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(
-        typeof data.detail === "string"
-          ? data.detail
-          : `Routing failed: HTTP ${response.status}`
-      );
-    }
-
-    if (
-      !Array.isArray(data.coordinates) ||
-      data.coordinates.length < 2
-    ) {
-      throw new Error("No drawable route returned.");
-    }
-
-    routeLayer.clearLayers();
-
-    const routePoints = data.coordinates.map(
-      ([latitude, longitude]) =>
-        marsToMap(latitude, longitude)
-    );
-
-    const routeLine = L.polyline(routePoints, {
-      color: "#00e5ff",
-      weight: 5,
-      opacity: 0.95
-    }).addTo(routeLayer);
-
-    routeLine.bindPopup(
-      `<strong>A* Safest Route</strong>` +
-      `<p>Distance: ${data.distance_km} km</p>` +
-      `<p>Terrain exposure: ${(
-        data.class_2_fraction * 100
-      ).toFixed(1)}%</p>`
-    );
-
-    map.fitBounds(routeLine.getBounds(), {
-      padding: [60, 60],
-      maxZoom: 12
-    });
-
-    setStatus(
-      `Route calculated | ${data.distance_km} km`
-    );
-
-    console.log("A* route:", data);
-
-  } catch (error) {
-    console.error("Route calculation failed:", error);
-    setStatus(`Routing error: ${error.message}`);
-  }
-}
-
-// Temporary test button
-const routeTestButton = document.createElement("button");
-
-routeTestButton.textContent = "Calculate A* Test Route";
-routeTestButton.style.cssText = `
-  display: block;
-  width: 100%;
-  padding: 12px;
-  margin-top: 16px;
-  background: #087e91;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-`;
-
-routeTestButton.addEventListener(
-  "click",
-  calculateAndDisplayRoute
-);
-
-const routeSidebar =
-  document.querySelector(".sidebar") ||
-  document.querySelector("aside");
-
-if (routeSidebar) {
-  routeSidebar.appendChild(routeTestButton);
-}
-
-
-console.log("MARS PATHFINDER");
-console.log("Phase 6E: Scientific Investigation + Hazards");
-console.log("MOLA URL:", MOLA_URL);
-console.log("CTX URL:", CTX_URL);
-console.log("CTX coverage:", ctxCoverage.toBBoxString());
+console.log("MARS PATHFINDER | PHASE 7C");
+console.log("Base Camp Alpha:", BASE_CAMP);
