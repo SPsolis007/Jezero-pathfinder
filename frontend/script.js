@@ -495,12 +495,32 @@ function setMissionDestination(site) {
 // 10. SCIENTIFIC MARKERS AND MAP POPUPS
 // -----------------------------------------------------
 
+const SCIENCE_PHOTOS = {
+  "Rochette": "images/science/rochette.jpg",
+  "Brac": "images/science/brac.jpg",
+  "Roubion": "images/science/roubion.jpg",
+  "Wildcat Ridge": "images/science/wildcat-ridge.jpg",
+  "Cheyava Falls": "images/science/cheyava-falls.jpg",
+  "Amalik": "images/science/amalik.jpg"
+};
+
 function createSitePopup(site) {
   const popup = document.createElement("div");
   popup.className = "mars-site-popup";
 
   const title = document.createElement("h3");
   title.textContent = site.name;
+
+const photo = document.createElement("img");
+photo.className = "science-site-photo";
+photo.src = SCIENCE_PHOTOS[site.name] || "";
+photo.alt = `NASA Perseverance imagery associated with ${site.name}`;
+photo.loading = "lazy";
+
+photo.onerror = () => {
+  photo.remove();
+};
+
 
   const description = document.createElement("p");
   description.textContent = site.description;
@@ -591,6 +611,7 @@ function createSitePopup(site) {
 
   popup.append(
     title,
+    photo,
     description,
     coordinates,
     evidence,

@@ -69,8 +69,8 @@
     byId("wp-end-readout").textContent = end
       ? `Destination: ${end.name} (${end.latitude.toFixed(5)}°N, ${end.longitude.toFixed(5)}°E)`
       : "Destination: not selected";
-    drawEndpoint(wpStartLayer, start, "#208cff", "START");
-    drawEndpoint(wpEndLayer, end, "#ff9633", "END");
+    drawEndpoint(wpStartLayer, start, "#ef4444", "START");
+    drawEndpoint(wpEndLayer, end, "#ef4444", "END");
   }
   function assignPoint(which, point) {
     resetRoutes();
