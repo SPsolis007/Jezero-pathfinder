@@ -750,3 +750,38 @@ select:focus {
 .waypoint-planner #wp-results .wp-error { color:#ffb7a9; }
 .wp-original-heading { margin-top:22px !important; color:var(--muted); font-size:12px !important; }
 @media (max-width: 380px) { .waypoint-planner .waypoint-pick-grid { grid-template-columns: 1fr; } }
+
+
+/* Prevent long text and URLs from overflowing map popups */
+.leaflet-popup-content {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* Keep popup content within its container */
+.leaflet-popup-content-wrapper {
+  max-width: min(90vw, 420px);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Keep buttons and other content inside */
+.leaflet-popup-content * {
+  max-width: 100%;
+  box-sizing: border-box;
+}\n
+/* Scientific popup source links */
+.mars-site-popup {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.mars-site-popup .popup-source-link {
+  display: block;
+  margin-top: 8px;
+  color: #087e91;
+  font-weight: 700;
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}

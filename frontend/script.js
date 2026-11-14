@@ -511,7 +511,28 @@ function createSitePopup(site) {
     `${site.longitude.toFixed(5)}° E`;
 
   const evidence = document.createElement("p");
-  evidence.textContent = site.evidence;
+
+  // Display readable evidence text instead of raw URLs.
+  const sourceText = String(site.evidence || "");
+  const sourceUrls = sourceText.match(/https?:\/\/[^\s;]+/g) || [];
+
+  evidence.textContent = sourceText
+    .replace(/https?:\/\/[^\s;]+/g, "")
+    .replace(/\s*;\s*/g, " ")
+    .trim();
+
+  // Preserve every source as a clickable link.
+  sourceUrls.forEach((rawUrl, index) => {
+    const link = document.createElement("a");
+    link.href = rawUrl;
+    link.textContent = sourceUrls.length > 1
+      ? `View NASA Source ${index + 1}`
+      : "View NASA Source";
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.className = "popup-source-link";
+    evidence.appendChild(link);
+  });
 
   const destinationButton =
     document.createElement("button");
