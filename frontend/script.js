@@ -640,6 +640,123 @@ setStatus(
   "Jezero mission map ready. Loading hazard metadata..."
 );
 
+
+// ======================================================
+// PHASE 7B: FIRST A* ROUTE VISUALISATION
+// ======================================================
+
+const routeLayer = L.layerGroup().addTo(map);
+
+async function calculateAndDisplayRoute() {
+  setStatus("Calculating terrain-aware route...");
+
+  try {
+    const response = await fetch(
+      "http://127.0.0.1:8000/api/route",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          start: {
+            latitude: 18.4,
+            longitude: 77.5
+          },
+          destination: {
+            latitude: 18.42,
+            longitude: 77.48
+          },
+          mode: "safest"
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        typeof data.detail === "string"
+          ? data.detail
+          : `Routing failed: HTTP ${response.status}`
+      );
+    }
+
+    if (
+      !Array.isArray(data.coordinates) ||
+      data.coordinates.length < 2
+    ) {
+      throw new Error("No drawable route returned.");
+    }
+
+    routeLayer.clearLayers();
+
+    const routePoints = data.coordinates.map(
+      ([latitude, longitude]) =>
+        marsToMap(latitude, longitude)
+    );
+
+    const routeLine = L.polyline(routePoints, {
+      color: "#00e5ff",
+      weight: 5,
+      opacity: 0.95
+    }).addTo(routeLayer);
+
+    routeLine.bindPopup(
+      `<strong>A* Safest Route</strong>` +
+      `<p>Distance: ${data.distance_km} km</p>` +
+      `<p>Terrain exposure: ${(
+        data.class_2_fraction * 100
+      ).toFixed(1)}%</p>`
+    );
+
+    map.fitBounds(routeLine.getBounds(), {
+      padding: [60, 60],
+      maxZoom: 12
+    });
+
+    setStatus(
+      `Route calculated | ${data.distance_km} km`
+    );
+
+    console.log("A* route:", data);
+
+  } catch (error) {
+    console.error("Route calculation failed:", error);
+    setStatus(`Routing error: ${error.message}`);
+  }
+}
+
+// Temporary test button
+const routeTestButton = document.createElement("button");
+
+routeTestButton.textContent = "Calculate A* Test Route";
+routeTestButton.style.cssText = `
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-top: 16px;
+  background: #087e91;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+`;
+
+routeTestButton.addEventListener(
+  "click",
+  calculateAndDisplayRoute
+);
+
+const routeSidebar =
+  document.querySelector(".sidebar") ||
+  document.querySelector("aside");
+
+if (routeSidebar) {
+  routeSidebar.appendChild(routeTestButton);
+}
+
+
 console.log("MARS PATHFINDER");
 console.log("Phase 6E: Scientific Investigation + Hazards");
 console.log("MOLA URL:", MOLA_URL);
