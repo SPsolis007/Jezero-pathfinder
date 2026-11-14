@@ -72,6 +72,7 @@
                 type="button">
           Mission
         </button>
+              <button class="workspace-tab" data-tab="environment" type="button">Weather</button>
       </nav>
 
       <!-- EXPLORE -->
@@ -92,7 +93,7 @@
           <p>Hypothetical human exploration base camp</p>
 
           <p class="muted">
-            18.40000° N, 77.50000° E
+            18.42871° N, 77.41327° E
           </p>
 
           <div class="metric-row">
@@ -193,7 +194,55 @@
       </section>
 
       <!-- TERRAIN -->
-      <section class="tab-content" id="tab-terrain">
+            <!-- ENVIRONMENT: NASA MEDA archived observations -->
+      <section class="tab-content" id="tab-environment">
+        <h3>Environmental Intelligence</h3>
+        <p class="section-description">NASA Perseverance MEDA calibrated observations, Sol 1859. Historical measurements near the rover, not live weather and not readings at Basecamp.</p>
+        <div class="info-card environment-info">
+          <strong>Archived observation data</strong>
+          <p>Air temperature (ATS) and atmospheric pressure (PS). Charts show averages of observed measurements in five-minute local solar time bins. Unsampled periods remain blank.</p>
+          <p id="meda-observation-count" class="small-text">Loading archived measurements...</p>
+        </div>
+        <div class="info-card">
+          <h4>Air temperature</h4>
+          <label for="meda-temp-sensor">Temperature sensor</label>
+          <select id="meda-temp-sensor">
+            <option value="t1">ATS 1 · RSM 50°</option>
+            <option value="t2">ATS 2 · RSM 155°</option>
+            <option value="t3">ATS 3 · RSM 290°</option>
+            <option value="t4">ATS 4 · RFB port</option>
+            <option value="t5">ATS 5 · RFB starboard</option>
+          </select>
+          <div class="environment-metrics">
+            <div><span>Observed mean</span><strong id="meda-temp-mean">-- °C</strong></div>
+            <div><span>Recorded min / max</span><strong id="meda-temp-range">--</strong></div>
+          </div>
+          <div id="meda-temp-chart" class="environment-chart" aria-live="polite"></div>
+          <p class="small-text">Martian Local Mean Solar Time (LMST). Sensor orientation can affect individual readings.</p>
+        </div>
+        <div class="info-card">
+          <h4>Atmospheric pressure</h4>
+          <label for="meda-pressure-sensor">Pressure sensor</label>
+          <select id="meda-pressure-sensor">
+            <option value="p3">BAROCAP 3 · transducer 1</option>
+            <option value="p1">BAROCAP 1</option>
+            <option value="p2">BAROCAP 2</option>
+          </select>
+          <div class="environment-metrics">
+            <div><span>Observed mean</span><strong id="meda-pressure-mean">-- Pa</strong></div>
+            <div><span>Recorded min / max</span><strong id="meda-pressure-range">--</strong></div>
+          </div>
+          <div id="meda-pressure-chart" class="environment-chart" aria-live="polite"></div>
+          <p class="small-text">Pressure uncertainty fields were empty in the downloaded CSV. Values are not flight-safety limits.</p>
+        </div>
+        <div class="info-card">
+          <h4>Scientific provenance and limitations</h4>
+          <p>Source: <a href="https://atmos.nmsu.edu/PDS/data/PDS4/Mars2020/mars2020_meda/data_calibrated_env/sol_1740_1859/sol_1859/" target="_blank" rel="noopener noreferrer">NASA Planetary Data System, MEDA calibrated archive, Sol 1859</a>.</p>
+          <p class="small-text">The data represent Perseverance's local environment during this archived sol. Measurements were acquired intermittently under the instrument's operating schedule. Chart gaps are not interpolated. This is not a crater-wide weather map, real-time weather service, or certified astronaut safety assessment.</p>
+        </div>
+      </section>
+
+<section class="tab-content" id="tab-terrain">
         <h3>Terrain Analysis</h3>
 
         <p class="section-description">
@@ -475,6 +524,7 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="script.js"></script>
+  <script src="environment.js"></script>
 
 </body>
 </html>

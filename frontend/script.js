@@ -22,8 +22,8 @@ const API = "http://127.0.0.1:8000";
 
 const BASE_CAMP = {
   name: "Basecamp",
-  latitude: 18.4,
-  longitude: 77.5,
+  latitude: 18.42871,
+  longitude: 77.41327,
   hypothetical: true
 };
 

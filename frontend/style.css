@@ -716,3 +716,21 @@ select:focus {
 .science-site-item span { color: var(--muted); font-size: 11px; line-height: 1.45; }
 .science-site-item small { color: var(--warning); font-size: 10px; }
 #science-assign-destination:disabled { opacity: .55; cursor: not-allowed; }
+
+
+/* Archived MEDA Environmental Intelligence (Sol 1859) */
+.workspace-tabs { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.environment-info p { margin-bottom: 0; }
+.environment-metrics { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin: 14px 0; }
+.environment-metrics > div { border: 1px solid var(--border); background: #0c1725; border-radius: 7px; padding: 10px; min-width: 0; }
+.environment-metrics span { display: block; color: var(--muted); font-size: 10px; margin-bottom: 7px; }
+.environment-metrics strong { color: var(--text); font-size: 15px; overflow-wrap: anywhere; }
+.environment-chart { min-height: 190px; width: 100%; overflow: hidden; }
+.environment-chart svg { display: block; width: 100%; height: auto; background: #0c1725; border: 1px solid var(--border); border-radius: 8px; }
+.environment-chart text { fill: #b5c5d5; font-family: system-ui, sans-serif; font-size: 12px; }
+.environment-chart .gridline { stroke: #37465a; stroke-width: 1; stroke-dasharray: 4 4; }
+.environment-chart .trace { fill: none; stroke: #25d5e6; stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+.environment-chart .pressure-trace { stroke: #f0b85a; }
+#tab-environment a { color: #72e7f4; overflow-wrap: anywhere; }
+@media (max-width: 900px) { .workspace-tab { font-size: 9px; } }
+@media (max-width: 380px) { .workspace-tab { font-size: 8px; } .environment-metrics { grid-template-columns: 1fr; } }

@@ -90,9 +90,9 @@ HAZARD_RASTER = (
 )
 
 BASE_CAMP = {
-    "name": "Base Camp Alpha",
-    "latitude": 18.4,
-    "longitude": 77.5,
+    "name": "Basecamp",
+    "latitude": 18.42871,
+    "longitude": 77.41327,
     "designation": "HYPOTHETICAL",
 }
 
