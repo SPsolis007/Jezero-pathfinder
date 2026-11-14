@@ -1,46 +1,459 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mars Pathfinder | Mission Control</title>
+
+  <title>Mars Pathfinder | Human Exploration System</title>
 
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
   >
+
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <header>
-    <h1>MARS PATHFINDER</h1>
-    <span>Mission Control | Prototype</span>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-symbol">M</div>
+
+      <div>
+        <h1>MARS PATHFINDER</h1>
+        <p>Human Exploration Decision Support</p>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <span class="prototype-label">SIMULATION</span>
+      <span class="mission-label">JEZERO CRATER</span>
+    </div>
   </header>
 
-  <main>
+  <main class="app-layout">
+
     <aside class="sidebar">
-      <h2>Mission Controls</h2>
 
-      <label for="objective">Scientific objective</label>
-      <select id="objective">
-        <option value="sedimentary">Investigate sedimentary deposits</option>
-        <option value="geology">Explore geological boundaries</option>
-        <option value="minerals">Investigate mineral evidence</option>
-      </select>
+      <div class="sidebar-header">
+        <h2>Mission Workspace</h2>
+        <p>Base Camp Alpha Expedition</p>
+      </div>
 
-      <h3>Map Layers</h3>
-      <label><input type="checkbox" checked disabled> Mars imagery</label>
-      <label><input type="checkbox" id="show-sites" checked> Scientific sites</label>
+      <nav class="workspace-tabs" aria-label="Mission tools">
+        <button class="workspace-tab active"
+                data-tab="explore"
+                type="button">
+          Explore
+        </button>
 
-      <h3>Mission Status</h3>
-      <p id="status">Initialising Mars map...</p>
+        <button class="workspace-tab"
+                data-tab="science"
+                type="button">
+          Science
+        </button>
+
+        <button class="workspace-tab"
+                data-tab="terrain"
+                type="button">
+          Terrain
+        </button>
+
+        <button class="workspace-tab"
+                data-tab="navigation"
+                type="button">
+          Navigation
+        </button>
+
+        <button class="workspace-tab"
+                data-tab="mission"
+                type="button">
+          Mission
+        </button>
+      </nav>
+
+      <!-- EXPLORE -->
+      <section class="tab-content active" id="tab-explore">
+        <h3>Explore Jezero</h3>
+
+        <p class="section-description">
+          Select a scientific marker on the map to
+          inspect the site and assign a destination.
+        </p>
+
+        <div class="info-card">
+          <div class="card-heading">
+            <span class="dot blue"></span>
+            <strong>Base Camp Alpha</strong>
+          </div>
+
+          <p>Hypothetical human exploration base camp</p>
+
+          <p class="muted">
+            18.40000° N, 77.50000° E
+          </p>
+
+          <div class="metric-row">
+            <span>Terrain assessment</span>
+            <strong id="basecamp-assessment">
+              Loading...
+            </strong>
+          </div>
+
+          <p id="basecamp-details" class="small-text"></p>
+        </div>
+
+        <h3>Scientific Objective</h3>
+
+        <label for="objective">Investigation focus</label>
+
+        <select id="objective">
+          <option value="sedimentary">
+            Investigate sedimentary deposits
+          </option>
+
+          <option value="geology">
+            Explore geological boundaries
+          </option>
+
+          <option value="minerals">
+            Investigate mineral evidence
+          </option>
+        </select>
+
+        <div class="info-card">
+          <strong>Map Interaction</strong>
+
+          <p>
+            Orange markers represent conceptual
+            scientific investigation locations.
+          </p>
+
+          <p>
+            Click a marker and choose
+            <strong>Set Destination</strong>.
+          </p>
+        </div>
+      </section>
+
+      <!-- SCIENCE -->
+      <section class="tab-content" id="tab-science">
+        <h3>Scientific Investigation</h3>
+
+        <div id="science-panel" class="info-card">
+          <h4 id="science-title">No site selected</h4>
+
+          <p id="science-description">
+            Click an orange scientific marker to
+            investigate a potential research location.
+          </p>
+
+          <div class="science-detail">
+            <strong>Scientific Objective</strong>
+            <p id="science-objective">Not selected</p>
+          </div>
+
+          <div class="science-detail">
+            <strong>Scientific Significance</strong>
+            <p id="science-significance">
+              Not available
+            </p>
+          </div>
+
+          <div class="science-detail">
+            <strong>Evidence and Confidence</strong>
+            <p id="science-evidence">
+              Not assessed
+            </p>
+          </div>
+
+          <div class="science-detail">
+            <strong>Safety Assessment</strong>
+            <p id="science-safety">
+              Awaiting site selection.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- TERRAIN -->
+      <section class="tab-content" id="tab-terrain">
+        <h3>Terrain Analysis</h3>
+
+        <p class="section-description">
+          Inspect terrain classifications derived
+          from the Jezero hazard raster.
+        </p>
+
+        <div class="info-card">
+          <label class="checkbox-label">
+            <input type="checkbox"
+                   id="show-hazards">
+            Show terrain hazard overlay
+          </label>
+
+          <label class="checkbox-label">
+            <input type="checkbox"
+                   id="show-sites"
+                   checked>
+            Show scientific sites
+          </label>
+
+          <label class="checkbox-label">
+            <input type="checkbox"
+                   id="show-ctx"
+                   checked>
+            Show CTX imagery
+          </label>
+
+          <label class="checkbox-label">
+            <input type="checkbox"
+                   id="show-coverage"
+                   checked>
+            Show CTX coverage boundary
+          </label>
+        </div>
+
+        <div class="info-card">
+          <h4>Hazard Classification</h4>
+
+          <div class="legend-row">
+            <span class="legend-dot hazard-low"></span>
+            Class 1: Lower concern
+          </div>
+
+          <div class="legend-row">
+            <span class="legend-dot hazard-medium"></span>
+            Class 2: Elevated concern
+          </div>
+
+          <div class="legend-row">
+            <span class="legend-dot hazard-high"></span>
+            Class 3: Restricted
+          </div>
+
+          <p class="small-text">
+            Prototype classification. Not certified
+            for human or rover operations.
+          </p>
+        </div>
+      </section>
+
+      <!-- NAVIGATION -->
+      <section class="tab-content" id="tab-navigation">
+        <h3>Mission Navigation</h3>
+
+        <div class="info-card">
+          <div class="metric-row">
+            <span>Starting point</span>
+            <strong>Base Camp Alpha</strong>
+          </div>
+
+          <div class="metric-row">
+            <span>Destination</span>
+            <strong id="routing-destination">
+              Not assigned
+            </strong>
+          </div>
+
+          <button id="calculate-routes"
+                  class="primary-button"
+                  type="button">
+            Compare A* Routes
+          </button>
+
+          <div id="routing-results"
+               class="results-panel"
+               aria-live="polite">
+          </div>
+        </div>
+
+        <div class="info-card">
+          <h4>Route Legend</h4>
+
+          <div class="legend-row">
+            <span class="route-swatch safest"></span>
+            Safest route
+          </div>
+
+          <div class="legend-row">
+            <span class="route-swatch shortest"></span>
+            Shortest route
+          </div>
+        </div>
+      </section>
+
+      <!-- MISSION -->
+      <section class="tab-content" id="tab-mission">
+        <h3>Mission Status</h3>
+
+        <div class="info-card">
+          <div class="metric-row">
+            <span>Base camp</span>
+            <strong>Alpha</strong>
+          </div>
+
+          <div class="metric-row">
+            <span>Human survivability</span>
+            <strong>Not assessed</strong>
+          </div>
+
+          <div class="metric-row">
+            <span>Landing certification</span>
+            <strong>No</strong>
+          </div>
+        </div>
+
+        <h3>Round-Trip Analysis</h3>
+
+        <p class="section-description">
+          Evaluate a hypothetical rover excursion
+          and return to Base Camp Alpha.
+        </p>
+
+        <div class="info-card">
+
+          <label for="mission-route-mode">
+            Routing objective
+          </label>
+
+          <select id="mission-route-mode">
+            <option value="safest">
+              Safest traversable route
+            </option>
+
+            <option value="shortest">
+              Shortest traversable route
+            </option>
+          </select>
+
+          <label for="rover-speed">
+            Rover speed (km/h)
+          </label>
+
+          <input id="rover-speed"
+                 type="number"
+                 min="0.1"
+                 max="20"
+                 step="0.5"
+                 value="4">
+
+          <label for="rover-energy">
+            Travel energy (kWh/km)
+          </label>
+
+          <input id="rover-energy"
+                 type="number"
+                 min="0.1"
+                 max="50"
+                 step="0.1"
+                 value="1.5">
+
+          <label for="mission-energy">
+            Available energy (kWh)
+          </label>
+
+          <input id="mission-energy"
+                 type="number"
+                 min="1"
+                 max="1000"
+                 step="1"
+                 value="20">
+
+          <label for="mission-hours">
+            Maximum mission duration (hours)
+          </label>
+
+          <input id="mission-hours"
+                 type="number"
+                 min="1"
+                 max="72"
+                 step="1"
+                 value="8">
+
+          <label for="science-hours">
+            Science activity duration (hours)
+          </label>
+
+          <input id="science-hours"
+                 type="number"
+                 min="0"
+                 max="24"
+                 step="0.5"
+                 value="1">
+
+          <p class="small-text">
+            Hypothetical planning parameters.
+            Reserve assumptions: 25% energy
+            and 20% time.
+          </p>
+
+          <button id="roundtrip-button"
+                  class="primary-button"
+                  type="button">
+            Analyse Round Trip
+          </button>
+
+          <div id="roundtrip-results"
+               class="results-panel"
+               aria-live="polite">
+          </div>
+        </div>
+      </section>
+
+      <div class="sidebar-footer">
+        <span class="status-dot"></span>
+        <p id="status">
+          Initialising Mars Pathfinder...
+        </p>
+      </div>
+
     </aside>
 
-    <section id="map"></section>
+    <section class="map-workspace">
+
+      <div id="map"></div>
+
+      <div class="map-overlay-label">
+        JEZERO CRATER
+        <span>MARS SURFACE EXPLORATION</span>
+      </div>
+
+      <div class="map-legend">
+        <div>
+          <span class="legend-dot basecamp-dot"></span>
+          Base Camp Alpha
+        </div>
+
+        <div>
+          <span class="legend-dot science-dot"></span>
+          Scientific site
+        </div>
+
+        <div>
+          <span class="route-swatch safest"></span>
+          Safest route
+        </div>
+
+        <div>
+          <span class="route-swatch shortest"></span>
+          Shortest route
+        </div>
+      </div>
+
+      <div class="map-warning">
+        PROTOTYPE TERRAIN MODEL
+        <span>Not certified for human operations</span>
+      </div>
+
+    </section>
+
   </main>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="script.js"></script>
+
 </body>
 </html>
