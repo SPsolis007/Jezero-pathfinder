@@ -802,5 +802,324 @@ setStatus("Initialising human exploration mission...");
 loadHazards();
 assessBaseCamp();
 
+
+// =====================================================
+// PHASE 7D: ROUND-TRIP MISSION FEASIBILITY
+// =====================================================
+
+const roundTripLayer = L.layerGroup().addTo(map);
+
+function createRoundTripPanel() {
+  if (document.getElementById("roundtrip-button")) {
+    return;
+  }
+
+  const section = document.createElement("section");
+  section.className = "roundtrip-section";
+
+  section.innerHTML = `
+    <h3>Round-Trip Mission Analysis</h3>
+
+    <p>
+      Evaluate whether the crew can travel from
+      Base Camp Alpha to the selected scientific
+      destination and return within modelled
+      time and energy budgets.
+    </p>
+
+    <label for="mission-route-mode">
+      Routing objective
+    </label>
+
+    <select id="mission-route-mode">
+      <option value="safest">Terrain-aware route</option>
+      <option value="shortest">Shortest traversable route</option>
+    </select>
+
+    <label for="rover-speed">
+      Rover speed (km/h)
+    </label>
+    <input id="rover-speed" type="number"
+      min="0.1" max="20" step="0.5" value="4">
+
+    <label for="rover-energy">
+      Travel energy (kWh/km)
+    </label>
+    <input id="rover-energy" type="number"
+      min="0.1" max="50" step="0.1" value="1.5">
+
+    <label for="mission-energy">
+      Available energy (kWh)
+    </label>
+    <input id="mission-energy" type="number"
+      min="1" max="1000" step="1" value="20">
+
+    <label for="mission-hours">
+      Maximum mission duration (hours)
+    </label>
+    <input id="mission-hours" type="number"
+      min="1" max="72" step="1" value="8">
+
+    <label for="science-hours">
+      Science activity duration (hours)
+    </label>
+    <input id="science-hours" type="number"
+      min="0" max="24" step="0.5" value="1">
+
+    <p>
+      <small>
+        Scenario assumptions: 25% energy reserve
+        and 20% time reserve. These are not
+        validated Mars mission requirements.
+      </small>
+    </p>
+
+    <button id="roundtrip-button">
+      Analyse Round-Trip Mission
+    </button>
+
+    <div id="roundtrip-results"
+      aria-live="polite"></div>
+  `;
+
+  const statusHeading = [
+    ...sidebar.querySelectorAll("h3")
+  ].find(
+    h => h.textContent.trim() === "Mission Status"
+  );
+
+  if (statusHeading) {
+    sidebar.insertBefore(section, statusHeading);
+  } else {
+    sidebar.appendChild(section);
+  }
+}
+
+createRoundTripPanel();
+
+function missionInput(id) {
+  return Number(
+    document.getElementById(id).value
+  );
+}
+
+function displayRoundTrip(data) {
+  const mission = data.mission;
+  const results = document.getElementById(
+    "roundtrip-results"
+  );
+
+  results.replaceChildren();
+
+  const fields = [
+    ["Assessment", mission.assessment],
+    [
+      "Round-trip distance",
+      `${mission.roundtrip_distance_km} km`
+    ],
+    [
+      "Travel time",
+      `${mission.travel_hours} hours`
+    ],
+    [
+      "Total mission duration",
+      `${mission.total_hours} hours`
+    ],
+    [
+      "Travel energy",
+      `${mission.travel_energy_kwh} kWh`
+    ],
+    [
+      "Energy margin",
+      `${mission.energy_margin_kwh} kWh`
+    ],
+    [
+      "Time margin",
+      `${mission.time_margin_hours} hours`
+    ],
+    [
+      "Energy budget",
+      mission.energy_pass ? "PASS" : "FAIL"
+    ],
+    [
+      "Time budget",
+      mission.time_pass ? "PASS" : "FAIL"
+    ]
+  ];
+
+  fields.forEach(([label, value]) => {
+    const row = document.createElement("p");
+
+    const strong = document.createElement("strong");
+    strong.textContent = `${label}: `;
+
+    row.appendChild(strong);
+    row.appendChild(
+      document.createTextNode(String(value))
+    );
+
+    results.appendChild(row);
+  });
+
+  const note = document.createElement("p");
+  note.textContent =
+    "Prototype scenario only. This does not " +
+    "establish actual astronaut survivability.";
+
+  results.appendChild(note);
+}
+
+function drawRoundTrip(data) {
+  roundTripLayer.clearLayers();
+
+  const outboundPoints =
+    data.outbound.coordinates.map(
+      ([lat, lon]) => marsToMap(lat, lon)
+    );
+
+  const returnPoints =
+    data.return.coordinates.map(
+      ([lat, lon]) => marsToMap(lat, lon)
+    );
+
+  // Wide dark line to distinguish mission
+  // navigation from the underlying hazard map.
+  L.polyline(outboundPoints, {
+    color: "#081c2c",
+    weight: 9,
+    opacity: 0.85
+  }).addTo(roundTripLayer);
+
+  const outboundLine = L.polyline(
+    outboundPoints,
+    {
+      color: "#00e5ff",
+      weight: 5,
+      opacity: 1
+    }
+  ).addTo(roundTripLayer);
+
+  // The return journey follows the same route
+  // in reverse, so it is drawn as a dashed line.
+  L.polyline(returnPoints, {
+    color: "#ffffff",
+    weight: 2,
+    opacity: 0.95,
+    dashArray: "5,9"
+  }).addTo(roundTripLayer);
+
+  outboundLine.bindPopup(
+    "<strong>Round-Trip Mission</strong>" +
+    `<p>Outbound: ${data.outbound.distance_km} km</p>` +
+    `<p>Return: ${data.return.distance_km} km</p>` +
+    "<p>Return follows the outbound route in reverse.</p>"
+  );
+
+  map.fitBounds(
+    outboundLine.getBounds(),
+    {
+      padding: [60, 60],
+      maxZoom: 12
+    }
+  );
+}
+
+async function analyseRoundTrip() {
+  if (!missionDestination) {
+    setStatus(
+      "Select a scientific destination first."
+    );
+    return;
+  }
+
+  const button = document.getElementById(
+    "roundtrip-button"
+  );
+
+  button.disabled = true;
+  button.textContent = "Analysing mission...";
+
+  setStatus(
+    "Evaluating round-trip mission feasibility..."
+  );
+
+  try {
+    const request = {
+      destination: {
+        latitude: missionDestination.latitude,
+        longitude: missionDestination.longitude
+      },
+      mode: document.getElementById(
+        "mission-route-mode"
+      ).value,
+      speed_kmh: missionInput("rover-speed"),
+      energy_kwh_per_km:
+        missionInput("rover-energy"),
+      available_energy_kwh:
+        missionInput("mission-energy"),
+      maximum_mission_hours:
+        missionInput("mission-hours"),
+      science_activity_hours:
+        missionInput("science-hours"),
+      energy_reserve_fraction: 0.25,
+      time_reserve_fraction: 0.20
+    };
+
+    const response = await fetch(
+      `${API}/api/mission/roundtrip`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(request)
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      const detail = data.detail;
+      throw new Error(
+        typeof detail === "string"
+          ? detail
+          : JSON.stringify(detail || "Request failed")
+      );
+    }
+
+    displayRoundTrip(data);
+
+    // Hide comparison lines while showing
+    // the selected round-trip mission.
+    routeLayer.clearLayers();
+
+    drawRoundTrip(data);
+
+    setStatus(
+      data.mission.within_modelled_budget
+        ? "Round-trip mission within modelled budget"
+        : "WARNING: Mission exceeds modelled budget"
+    );
+
+    console.log("Round-trip analysis:", data);
+
+  } catch (error) {
+    console.error("Round-trip error:", error);
+    setStatus(`Mission analysis failed: ${error.message}`);
+
+  } finally {
+    button.disabled = false;
+    button.textContent = "Analyse Round-Trip Mission";
+  }
+}
+
+document.getElementById(
+  "roundtrip-button"
+).addEventListener(
+  "click",
+  analyseRoundTrip
+);
+
+
 console.log("MARS PATHFINDER | PHASE 7C");
 console.log("Base Camp Alpha:", BASE_CAMP);

@@ -242,3 +242,155 @@ def assess_basecamp():
                 "communications, or life support."
             )
         }
+
+# =====================================================
+# PHASE 7D: ROUND-TRIP MISSION FEASIBILITY
+# =====================================================
+
+from typing import Literal
+
+
+class MissionRequest(BaseModel):
+    destination: MarsCoordinate
+    mode: Literal["safest", "shortest"] = "safest"
+
+    # Hypothetical crewed-rover scenario parameters
+    speed_kmh: float = Field(default=4.0, gt=0, le=20)
+    energy_kwh_per_km: float = Field(
+        default=1.5, gt=0, le=50
+    )
+    available_energy_kwh: float = Field(
+        default=20.0, gt=0, le=1000
+    )
+    maximum_mission_hours: float = Field(
+        default=8.0, gt=0, le=72
+    )
+    science_activity_hours: float = Field(
+        default=1.0, ge=0, le=24
+    )
+    energy_reserve_fraction: float = Field(
+        default=0.25, ge=0, lt=1
+    )
+    time_reserve_fraction: float = Field(
+        default=0.20, ge=0, lt=1
+    )
+
+
+@app.post("/api/mission/roundtrip")
+def calculate_roundtrip(request: MissionRequest):
+    try:
+        outbound = calculate_route(
+            start={
+                "latitude": BASE_CAMP["latitude"],
+                "longitude": BASE_CAMP["longitude"]
+            },
+            destination=request.destination.model_dump(),
+            mode=request.mode
+        )
+
+    except RoutingError as error:
+        raise HTTPException(
+            status_code=error.status_code,
+            detail=str(error)
+        )
+
+    # The current hazard graph is static and symmetric.
+    # Returning along the same path is a valid modelled
+    # route, but not an independently assessed alternative.
+    return_coordinates = list(
+        reversed(outbound["coordinates"])
+    )
+
+    outbound_km = outbound["distance_km"]
+    return_km = outbound_km
+    total_km = outbound_km + return_km
+
+    travel_hours = total_km / request.speed_kmh
+
+    total_hours = (
+        travel_hours +
+        request.science_activity_hours
+    )
+
+    travel_energy = (
+        total_km * request.energy_kwh_per_km
+    )
+
+    energy_limit = (
+        request.available_energy_kwh *
+        (1 - request.energy_reserve_fraction)
+    )
+
+    time_limit = (
+        request.maximum_mission_hours *
+        (1 - request.time_reserve_fraction)
+    )
+
+    energy_margin = energy_limit - travel_energy
+    time_margin = time_limit - total_hours
+
+    energy_pass = energy_margin >= 0
+    time_pass = time_margin >= 0
+
+    feasible = energy_pass and time_pass
+
+    if feasible:
+        assessment = "WITHIN MODELLED BUDGET"
+    else:
+        assessment = "EXCEEDS MODELLED BUDGET"
+
+    return {
+        "status": "success",
+        "mode": request.mode,
+        "basecamp": BASE_CAMP,
+        "destination": request.destination.model_dump(),
+        "outbound": {
+            "distance_km": outbound_km,
+            "coordinates": outbound["coordinates"],
+            "class_2_fraction": outbound[
+                "class_2_fraction"
+            ]
+        },
+        "return": {
+            "distance_km": return_km,
+            "coordinates": return_coordinates,
+            "method": "Reverse of outbound route"
+        },
+        "mission": {
+            "roundtrip_distance_km": round(
+                total_km, 3
+            ),
+            "travel_hours": round(
+                travel_hours, 2
+            ),
+            "science_hours": request.science_activity_hours,
+            "total_hours": round(total_hours, 2),
+            "travel_energy_kwh": round(
+                travel_energy, 2
+            ),
+            "usable_energy_kwh": round(
+                energy_limit, 2
+            ),
+            "usable_time_hours": round(
+                time_limit, 2
+            ),
+            "energy_margin_kwh": round(
+                energy_margin, 2
+            ),
+            "time_margin_hours": round(
+                time_margin, 2
+            ),
+            "energy_pass": energy_pass,
+            "time_pass": time_pass,
+            "within_modelled_budget": feasible,
+            "assessment": assessment
+        },
+        "limitations": [
+            "Hypothetical rover speed and energy consumption",
+            "Static symmetric terrain model",
+            "Return path reverses the outbound route",
+            "No weather, radiation or life-support model",
+            "No elevation-dependent propulsion model",
+            "Not an operational human safety certification"
+        ]
+    }
