@@ -1,0 +1,27 @@
+{
+  "image": "assets/jezero_hazards.png",
+  "bounds": [
+    [
+      17.580766903874405,
+      76.99743706146
+    ],
+    [
+      19.29018700686615,
+      78.58267981539362
+    ]
+  ],
+  "source": "M20 Jezero CTX DEM, 20 m",
+  "classification": "Prototype terrain-screening model",
+  "reprojection": "Mars projected CRS to Mars geographic CRS",
+  "resampling": "nearest",
+  "display_width": 1800,
+  "display_height": 1941,
+  "original_resolution_m": 20,
+  "unknown_is_safe": false,
+  "classes": {
+    "1": "Lower terrain concern",
+    "2": "Elevated terrain concern",
+    "3": "Restricted by model"
+  },
+  "valid_pixel_count": 3490060
+}
