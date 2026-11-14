@@ -128,8 +128,8 @@
           <strong>Map Interaction</strong>
 
           <p>
-            Orange markers represent conceptual
-            scientific investigation locations.
+            Orange markers show NASA-documented sample points.
+            Route feasibility is checked using the terrain model.
           </p>
 
           <p>
@@ -152,7 +152,7 @@
             <button type="button" class="science-filter" data-science-filter="Astrobiology" aria-pressed="false">Astrobiology</button>
           </div>
           <div id="science-site-list" class="science-site-list" aria-label="Available scientific sites"></div>
-          <p class="small-text">Three previously tested sites are route-enabled. Other sites remain information-only until exact coordinates and raster coverage are verified.</p>
+          <p class="small-text">Six NASA-documented sampling locations are mapped. Coordinates identify documented sampling sites, not certified safe landing or approach points; A* routing checks local terrain feasibility.</p>
         </div>
 
         <div id="science-panel" class="info-card">
@@ -314,6 +314,32 @@
       <!-- NAVIGATION -->
       <section class="tab-content" id="tab-navigation">
         <h3>Mission Navigation</h3>
+        <!-- JEZERO_WAYPOINT_PLANNER_V1: choose any two traversable map points -->
+        <div class="info-card waypoint-planner" id="point-to-point-planner">
+          <h4>Point-to-point route planner</h4>
+          <p class="small-text">Choose Start and Destination on the map or use a documented science site. Compares A* routes and calculates one-way travel time and terrain-adjusted energy.</p>
+          <div class="waypoint-pick-grid">
+            <button type="button" id="wp-pick-start" class="wp-action">Pick Start on map</button>
+            <button type="button" id="wp-pick-end" class="wp-action">Pick Destination on map</button>
+          </div>
+          <div class="waypoint-pick-grid">
+            <div><label for="wp-start-select">Start</label><select id="wp-start-select"></select></div>
+            <div><label for="wp-end-select">Destination</label><select id="wp-end-select"></select></div>
+          </div>
+          <p class="small-text" id="wp-start-readout">Start: Basecamp</p>
+          <p class="small-text" id="wp-end-readout">Destination: Rochette</p>
+          <div class="waypoint-pick-grid">
+            <div><label for="wp-speed">Speed (km/h)</label><input type="number" id="wp-speed" min="0.1" max="20" step="0.5" value="4"></div>
+            <div><label for="wp-energy-rate">Baseline energy (kWh/km)</label><input type="number" id="wp-energy-rate" min="0.1" max="50" step="0.1" value="1.5"></div>
+            <div><label for="wp-energy-budget">Battery budget (kWh)</label><input type="number" id="wp-energy-budget" min="1" max="1000" step="1" value="20"></div>
+            <div><label for="wp-time-budget">Time budget (hours)</label><input type="number" id="wp-time-budget" min="1" max="72" step="0.5" value="8"></div>
+          </div>
+          <p class="small-text">One-way simulation; 25% energy and 20% time held in reserve. Uses the same terrain model as the existing mission analysis.</p>
+          <button type="button" id="wp-calculate" class="primary-button">Compare two-point A* routes</button>
+          <div id="wp-results" class="results-panel" aria-live="polite"></div>
+        </div>
+        <h4 class="wp-original-heading">Basecamp expedition (original planner)</h4>
+
 
         <div class="info-card">
           <div class="metric-row">
@@ -526,5 +552,6 @@
   <script src="script.js"></script>
   <script src="environment.js"></script>
 
+  <script src="route_planner.js"></script>
 </body>
 </html>

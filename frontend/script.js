@@ -230,7 +230,8 @@ const coverageOutline = L.rectangle(
     color: "#00e5ff",
     weight: 2,
     fillOpacity: 0,
-    dashArray: "6,6"
+    dashArray: "6,6",
+    interactive: false
   }
 ).addTo(map);
 
@@ -305,6 +306,7 @@ document.querySelectorAll(
 // -----------------------------------------------------
 
 const SCIENCE_SOURCE = "https://doi.org/10.1029/2022JE007474";
+// JEZERO_SIX_SITES_PDS_V1: sourced NASA sample coordinates; route eligibility checked by backend
 const sites = [
   {
     name: "Rochette", category: "Geology", latitude: 18.43074, longitude: 77.44437,
@@ -331,28 +333,40 @@ const sites = [
     evidence: "Documented Perseverance site; coordinates from the previously tested project dataset. Source: " + SCIENCE_SOURCE
   },
   {
-    name: "Wildcat Ridge", category: "Sedimentary", latitude: null, longitude: null,
-    routable: false,
-    description: "Documented sedimentary outcrop in Jezero's delta.",
-    objective: "Explore sedimentary records and organic-molecule observations.",
-    significance: "A key location for understanding ancient delta environments.",
-    evidence: "NASA site documentation: https://science.nasa.gov/resource/two-perseverance-sampling-locations-in-jezeros-delta/ . Exact coordinates and DEM coverage are not verified."
+    "name": "Wildcat Ridge",
+    "category": "Sedimentary",
+    "latitude": 18.45863707,
+    "longitude": 77.40588851,
+    "routable": true,
+    "verified": "NASA Mars 2020 Initial Reports, Vol. 2, Hazeltop core (Sol 509). Coordinate is a coring point, not an entire outcrop boundary. Raster feasibility requires an A* check.",
+    "description": "Sedimentary outcrop at Jezero's western delta front; the marker is the Hazeltop core location (Sol 509).",
+    "objective": "Investigate ancient lake sediments, sulfate minerals and organics-related signals.",
+    "significance": "Fine-grained sulfate-bearing mudstone can preserve evidence of ancient aqueous environments and potential biosignatures.",
+    "evidence": "NASA PDS Mars 2020 Initial Reports, Vol. 2, M2020-509-14 Hazeltop. Sampling coordinate, not a certified safe approach point. https://pds-geosciences.wustl.edu/missions/mars2020/Mars%202020%20Initial%20Reports%20Volume%202%20Release%202.pdf"
   },
   {
-    name: "Cheyava Falls", category: "Astrobiology", latitude: null, longitude: null,
-    routable: false,
-    description: "A rock investigated in the Bright Angel area of Neretva Vallis.",
-    objective: "Investigate possible biosignature-related features.",
-    significance: "Observed features are scientifically intriguing but do not establish evidence of life.",
-    evidence: "NASA: https://www.jpl.nasa.gov/news/nasas-perseverance-rover-scientists-find-intriguing-mars-rock/ . Exact coordinates and DEM coverage are not verified."
+    "name": "Cheyava Falls",
+    "category": "Astrobiology",
+    "latitude": 18.49747434,
+    "longitude": 77.30514915,
+    "routable": true,
+    "verified": "Mars 2020 Sample Dossier, Vol. 4, Sapphire Canyon (Sol 1215). Coordinate refers to sample acquisition; hazard/routing not yet confirmed.",
+    "description": "Bright Angel rock in Neretva Vallis; marker is the Sapphire Canyon coring location (Sol 1215).",
+    "objective": "Study unusual rock features and evaluate hypotheses for possible ancient biosignatures.",
+    "significance": "NASA identifies this sample as containing potential biosignatures. Biological origin is not established.",
+    "evidence": "Mars 2020 Sample Dossier, Vol. 4, M2020-1215-28 Sapphire Canyon, and NASA Mars Rock Samples. Sampling coordinate, not a certified safe approach point. https://pds-geosciences.wustl.edu/m2020/urn-nasa-pds-mars2020_sample_dossier/initial_reports/initial_reports_volume4.pdf#page=120 ; https://science.nasa.gov/mission/mars-2020-perseverance/mars-rock-samples/"
   },
   {
-    name: "Kodiak Outcrop", category: "Sedimentary", latitude: null, longitude: null,
-    routable: false,
-    description: "An exposed sedimentary outcrop associated with Jezero's ancient delta.",
-    objective: "Interpret preserved delta stratigraphy and ancient water activity.",
-    significance: "Exposed layers provide geological evidence of ancient river and lake processes.",
-    evidence: "Jezero delta context: https://www.jpl.nasa.gov/news/press_kits/mars_2020/landing/mission/landing_site/ . Exact coordinates and DEM coverage are not verified."
+    "name": "Amalik",
+    "category": "Sedimentary",
+    "latitude": 18.45068954,
+    "longitude": 77.40143171,
+    "routable": true,
+    "verified": "NASA Mars 2020 Initial Reports, Vol. 2, Shuyak core (Sol 575). Coordinate is a coring point; hazard/routing not yet confirmed.",
+    "description": "Fine-grained delta-front outcrop; the marker is the Shuyak sampling point (Sol 575).",
+    "objective": "Examine ancient lake deposits, olivine-bearing sediment and alteration products.",
+    "significance": "The olivine-bearing mudstone records sedimentary and water-rock alteration processes.",
+    "evidence": "NASA PDS Mars 2020 Initial Reports, Vol. 2, M2020-575-16 Shuyak. Sampling coordinate, not a certified safe approach point. https://pds-geosciences.wustl.edu/missions/mars2020/Mars%202020%20Initial%20Reports%20Volume%202%20Release%202.pdf"
   }
 ];
 
@@ -372,7 +386,11 @@ function renderScientificSelector() {
     const title = document.createElement("strong"); title.textContent = site.name;
     const description = document.createElement("span"); description.textContent = site.description;
     const status = document.createElement("small");
-    status.textContent = site.routable ? "Route-enabled · previously tested" : "Information only · coordinates pending";
+    status.textContent = site.routable
+      ? (/previously tested/i.test(site.verified || "")
+        ? "Earlier routing test passed"
+        : "NASA coordinates · route checked on request")
+      : "Information only · route unavailable";
     button.append(title, description, status);
     button.addEventListener("click", () => {
       updateSciencePanel(site);
@@ -420,9 +438,11 @@ function updateSciencePanel(site) {
 
   setText(
     "science-safety",
-    "Terrain hazard classification and " +
-    "routing are available. Site-specific " +
-    "human safety has not been validated."
+    (site.routable
+      ? "A route candidate is available in the prototype hazard model. " +
+        "Human safety has not been validated."
+      : "Information only: exact target coordinates and terrain " +
+        "coverage remain unverified.")
   );
 }
 

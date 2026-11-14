@@ -734,3 +734,19 @@ select:focus {
 #tab-environment a { color: #72e7f4; overflow-wrap: anywhere; }
 @media (max-width: 900px) { .workspace-tab { font-size: 9px; } }
 @media (max-width: 380px) { .workspace-tab { font-size: 8px; } .environment-metrics { grid-template-columns: 1fr; } }
+
+/* JEZERO_WAYPOINT_PLANNER_V1: two-point route planner */
+.waypoint-planner .waypoint-pick-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.waypoint-planner .waypoint-pick-grid > div { min-width:0; }
+.waypoint-planner .waypoint-pick-grid label { margin-top: 11px; }
+.waypoint-planner input[type=number], .waypoint-planner select { width:100%; min-width:0; }
+.waypoint-planner .wp-action { background:#102e42; border:1px solid #4c8394; border-radius:6px; color:#e8eef6; padding:9px 4px; margin-bottom:9px; font-size:11px; font-weight:600; }
+.waypoint-planner .wp-action.wp-active { background:#176a7d; outline:2px solid #25d5e6; }
+.waypoint-planner #wp-results .wp-result { padding:10px; margin:8px 0; border:1px solid #33495b; border-radius:7px; background:#0c1725; }
+.waypoint-planner #wp-results .wp-result strong { color:#e8eef6; }
+.waypoint-planner #wp-results .wp-result p { padding:3px 0; border:0; }
+.waypoint-planner #wp-results .wp-pass { color:#64d6a6; }
+.waypoint-planner #wp-results .wp-fail { color:#ff9b87; }
+.waypoint-planner #wp-results .wp-error { color:#ffb7a9; }
+.wp-original-heading { margin-top:22px !important; color:var(--muted); font-size:12px !important; }
+@media (max-width: 380px) { .waypoint-planner .waypoint-pick-grid { grid-template-columns: 1fr; } }

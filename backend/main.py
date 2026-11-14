@@ -429,3 +429,7 @@ def calculate_roundtrip(request: MissionRequest):
             "Not an operational safety certification",
         ],
     }
+
+# JEZERO_WAYPOINT_PLANNER_V1: two-point mission endpoint
+from backend.point_to_point import router as point_to_point_router
+app.include_router(point_to_point_router)
