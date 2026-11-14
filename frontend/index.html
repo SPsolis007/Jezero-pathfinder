@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Mars Pathfinder | Human Exploration System</title>
+  <title>Jezero Pathfinder | Human Exploration System</title>
 
   <link
     rel="stylesheet"
@@ -22,7 +22,7 @@
       <div class="brand-symbol">M</div>
 
       <div>
-        <h1>MARS PATHFINDER</h1>
+        <h1>Jezero PATHFINDER</h1>
         <p>Human Exploration Decision Support</p>
       </div>
     </div>
@@ -39,7 +39,7 @@
 
       <div class="sidebar-header">
         <h2>Mission Workspace</h2>
-        <p>Base Camp Alpha Expedition</p>
+        <p>Basecamp Expedition</p>
       </div>
 
       <nav class="workspace-tabs" aria-label="Mission tools">
@@ -86,7 +86,7 @@
         <div class="info-card">
           <div class="card-heading">
             <span class="dot blue"></span>
-            <strong>Base Camp Alpha</strong>
+            <strong>Basecamp</strong>
           </div>
 
           <p>Hypothetical human exploration base camp</p>
@@ -142,6 +142,18 @@
       <section class="tab-content" id="tab-science">
         <h3>Scientific Investigation</h3>
 
+        <div class="info-card science-selector" aria-label="Scientific site selector">
+          <h4>Explore documented sites <span id="science-site-count" class="site-count">6 sites</span></h4>
+          <div class="science-filter-row" role="group" aria-label="Filter by scientific discipline">
+            <button type="button" class="science-filter active" data-science-filter="All" aria-pressed="true">All</button>
+            <button type="button" class="science-filter" data-science-filter="Geology" aria-pressed="false">Geology</button>
+            <button type="button" class="science-filter" data-science-filter="Sedimentary" aria-pressed="false">Sedimentary</button>
+            <button type="button" class="science-filter" data-science-filter="Astrobiology" aria-pressed="false">Astrobiology</button>
+          </div>
+          <div id="science-site-list" class="science-site-list" aria-label="Available scientific sites"></div>
+          <p class="small-text">Three previously tested sites are route-enabled. Other sites remain information-only until exact coordinates and raster coverage are verified.</p>
+        </div>
+
         <div id="science-panel" class="info-card">
           <h4 id="science-title">No site selected</h4>
 
@@ -149,6 +161,8 @@
             Click an orange scientific marker to
             investigate a potential research location.
           </p>
+
+          <button id="science-assign-destination" type="button" class="primary-button">Set as Mission Destination</button>
 
           <div class="science-detail">
             <strong>Scientific Objective</strong>
@@ -203,6 +217,13 @@
 
           <label class="checkbox-label">
             <input type="checkbox"
+                   id="show-hirise"
+                   checked>
+            Show HiRISE imagery (25 cm/pixel)
+          </label>
+
+          <label class="checkbox-label">
+            <input type="checkbox"
                    id="show-ctx"
                    checked>
             Show CTX imagery
@@ -248,7 +269,7 @@
         <div class="info-card">
           <div class="metric-row">
             <span>Starting point</span>
-            <strong>Base Camp Alpha</strong>
+            <strong>Basecamp</strong>
           </div>
 
           <div class="metric-row">
@@ -310,7 +331,7 @@
 
         <p class="section-description">
           Evaluate a hypothetical rover excursion, terrain-adjusted
-          energy demand, and return to Base Camp Alpha.
+          energy demand, and return to Basecamp.
         </p>
 
         <div class="info-card">
@@ -424,7 +445,7 @@
       <div class="map-legend">
         <div>
           <span class="legend-dot basecamp-dot"></span>
-          Base Camp Alpha
+          Basecamp
         </div>
 
         <div>

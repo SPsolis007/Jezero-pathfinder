@@ -2,12 +2,12 @@
 "use strict";
 
 // =====================================================
-// MARS PATHFINDER
+// Jezero PATHFINDER
 // HUMAN EXPLORATION SYSTEM
 //
 // NASA Mars Trek imagery
 // Scientific investigation
-// Base Camp Alpha
+// Basecamp
 // Terrain hazards
 // A* route comparison
 // Round-trip mission simulation
@@ -21,7 +21,7 @@
 const API = "http://127.0.0.1:8000";
 
 const BASE_CAMP = {
-  name: "Base Camp Alpha",
+  name: "Basecamp",
   latitude: 18.4,
   longitude: 77.5,
   hypothetical: true
@@ -36,6 +36,7 @@ const sitesCheckbox = document.getElementById("show-sites");
 const hazardsCheckbox = document.getElementById("show-hazards");
 const ctxCheckbox = document.getElementById("show-ctx");
 const coverageCheckbox = document.getElementById("show-coverage");
+const hiriseCheckbox = document.getElementById("show-hirise");
 
 let selectedScientificSite = null;
 let missionDestination = null;
@@ -134,7 +135,7 @@ function getErrorDetail(data, fallback) {
 
 const map = L.map("map", {
   crs: L.CRS.Simple,
-  minZoom: 0,
+  minZoom: 12,
   maxZoom: 13,
   zoomControl: true
 });
@@ -161,6 +162,13 @@ const CTX_URL =
   "JEZ_ctx_B_soc_008_orthoMosaic_6m_Eqc_latTs0_lon0/" +
   "1.0.0/default/default028mm/{z}/{y}/{x}.png";
 
+// NASA Mars Trek controlled HiRISE Jezero mosaic, 0.25 m/pixel.
+// Coverage is smaller than CTX; keep CTX visible underneath.
+const HIRISE_URL =
+  "https://trek.nasa.gov/tiles/Mars/EQ/" +
+  "JEZ_hirise_soc_006_orthoMosaic_25cm_Eqc_latTs0_lon0_first_dd/" +
+  "1.0.0/default/default028mm/{z}/{y}/{x}.png";
+
 const mola = L.tileLayer(MOLA_URL, {
   tileSize: 256,
   minZoom: 0,
@@ -178,6 +186,13 @@ const ctxCoverage = marsBounds(
   77.6991776
 );
 
+// Lock navigation to the Jezero CTX footprint.
+// This matches the zoom restriction verified in the browser console.
+map.setMinZoom(12);
+map.setMaxZoom(13);
+map.setMaxBounds(ctxCoverage);
+map.setView(ctxCoverage.getCenter(), 12, { animate: false });
+
 const ctx = L.tileLayer(CTX_URL, {
   tileSize: 256,
   minZoom: 0,
@@ -187,6 +202,27 @@ const ctx = L.tileLayer(CTX_URL, {
   opacity: 1,
   attribution: "NASA Mars Trek | MRO CTX Jezero"
 }).addTo(map);
+
+const hiriseCoverage = marsBounds(
+  18.3067994,
+  77.2229331,
+  18.6693150,
+  77.5839640
+);
+
+const hirise = L.tileLayer(HIRISE_URL, {
+  tileSize: 256,
+  minZoom: 0,
+  maxZoom: 13,
+  noWrap: true,
+  bounds: hiriseCoverage,
+  opacity: 1,
+  attribution: "NASA Mars Trek | MRO HiRISE Jezero (25 cm/pixel)"
+}).addTo(map);
+
+hirise.on("tileerror", event => {
+  console.warn("HiRISE tile unavailable; CTX remains underneath", event.coords);
+});
 
 const coverageOutline = L.rectangle(
   ctxCoverage,
@@ -219,6 +255,7 @@ const layerControl = L.control.layers(
     "MOLA Global Topography": mola
   },
   {
+    "Jezero HiRISE Imagery (25 cm)": hirise,
     "Jezero CTX Imagery": ctx,
     "CTX Coverage Boundary": coverageOutline,
     "Scientific Sites": scientificSites
@@ -267,83 +304,103 @@ document.querySelectorAll(
 // 7. SCIENTIFIC SITES
 // -----------------------------------------------------
 
-
-const SCIENCE_SOURCE =
-  "https://doi.org/10.1029/2022JE007474";
-
+const SCIENCE_SOURCE = "https://doi.org/10.1029/2022JE007474";
 const sites = [
   {
-    name: "Roubion",
-    latitude: 18.42769,
-    longitude: 77.45165,
-
-    description:
-      "Documented Perseverance investigation site " +
-      "in the Máaz formation.",
-
-    objective:
-      "Investigate basaltic igneous rocks and " +
-      "their geological history.",
-
-    significance:
-      "Roubion provides evidence about the " +
-      "igneous crater floor and its subsequent " +
-      "geological evolution.",
-
-    evidence:
-      "Published Perseverance investigation " +
-      "coordinates. A rock-core collection was " +
-      "attempted, but the material disaggregated. " +
-      "Source: " + SCIENCE_SOURCE
+    name: "Rochette", category: "Geology", latitude: 18.43074, longitude: 77.44437,
+    routable: true, verified: "Previously tested in Phase 9A; recheck against the active backend.",
+    description: "Perseverance crater-floor sampling site in the Máaz formation.",
+    objective: "Investigate basaltic igneous rocks and sampling context.",
+    significance: "Montdenier and Montagnac cores document the crater-floor geology.",
+    evidence: "Documented Perseverance site; coordinates from the previously tested project dataset. Source: " + SCIENCE_SOURCE
   },
-
   {
-    name: "Rochette",
-    latitude: 18.43074,
-    longitude: 77.44437,
-
-    description:
-      "Documented Perseverance sampling outcrop " +
-      "associated with Artuby Ridge.",
-
-    objective:
-      "Investigate basaltic rocks of the " +
-      "Máaz formation.",
-
-    significance:
-      "Perseverance collected the Montdenier " +
-      "and Montagnac cores here, supporting " +
-      "studies of crater-floor geology.",
-
-    evidence:
-      "Published sampling location and rock " +
-      "core records. Source: " + SCIENCE_SOURCE
+    name: "Brac", category: "Geology", latitude: 18.43397, longitude: 77.44301,
+    routable: true, verified: "Previously tested in Phase 9A; recheck against the active backend.",
+    description: "Perseverance site in the Séítah formation.",
+    objective: "Study the Séítah formation and its igneous mineralogy.",
+    significance: "Salette and Coulettes samples provide context for Jezero's geological history.",
+    evidence: "Documented Perseverance site; coordinates from the previously tested project dataset. Source: " + SCIENCE_SOURCE
   },
-
   {
-    name: "Brac",
-    latitude: 18.43397,
-    longitude: 77.44301,
-
-    description:
-      "Documented Perseverance sampling outcrop " +
-      "in the Séítah formation.",
-
-    objective:
-      "Investigate ultramafic cumulate rocks " +
-      "and their formation history.",
-
-    significance:
-      "Perseverance collected the Salette and " +
-      "Coulettes cores here. These rocks help " +
-      "scientists investigate the early " +
-      "geological history of Jezero Crater.",
-
-    evidence:
-      "Published sampling location and rock " +
-      "core records. Source: " + SCIENCE_SOURCE
+    name: "Roubion", category: "Geology", latitude: 18.42769, longitude: 77.45165,
+    routable: true, verified: "Previously tested in Phase 9A; recheck against the active backend.",
+    description: "Máaz formation investigation and unsuccessful coring attempt.",
+    objective: "Examine sampling challenges and crater-floor materials.",
+    significance: "The attempted core disaggregated, illustrating operational challenges.",
+    evidence: "Documented Perseverance site; coordinates from the previously tested project dataset. Source: " + SCIENCE_SOURCE
+  },
+  {
+    name: "Wildcat Ridge", category: "Sedimentary", latitude: null, longitude: null,
+    routable: false,
+    description: "Documented sedimentary outcrop in Jezero's delta.",
+    objective: "Explore sedimentary records and organic-molecule observations.",
+    significance: "A key location for understanding ancient delta environments.",
+    evidence: "NASA site documentation: https://science.nasa.gov/resource/two-perseverance-sampling-locations-in-jezeros-delta/ . Exact coordinates and DEM coverage are not verified."
+  },
+  {
+    name: "Cheyava Falls", category: "Astrobiology", latitude: null, longitude: null,
+    routable: false,
+    description: "A rock investigated in the Bright Angel area of Neretva Vallis.",
+    objective: "Investigate possible biosignature-related features.",
+    significance: "Observed features are scientifically intriguing but do not establish evidence of life.",
+    evidence: "NASA: https://www.jpl.nasa.gov/news/nasas-perseverance-rover-scientists-find-intriguing-mars-rock/ . Exact coordinates and DEM coverage are not verified."
+  },
+  {
+    name: "Kodiak Outcrop", category: "Sedimentary", latitude: null, longitude: null,
+    routable: false,
+    description: "An exposed sedimentary outcrop associated with Jezero's ancient delta.",
+    objective: "Interpret preserved delta stratigraphy and ancient water activity.",
+    significance: "Exposed layers provide geological evidence of ancient river and lake processes.",
+    evidence: "Jezero delta context: https://www.jpl.nasa.gov/news/press_kits/mars_2020/landing/mission/landing_site/ . Exact coordinates and DEM coverage are not verified."
   }
 ];
+
+let scienceFilter = "All";
+function renderScientificSelector() {
+  const list = document.getElementById("science-site-list");
+  const count = document.getElementById("science-site-count");
+  if (!list) return;
+  list.replaceChildren();
+  const filtered = sites.filter(site => scienceFilter === "All" || site.category === scienceFilter);
+  if (count) count.textContent = `${filtered.length} of ${sites.length} sites`;
+  filtered.forEach(site => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "science-site-item" + (selectedScientificSite?.name === site.name ? " selected" : "");
+    button.setAttribute("aria-pressed", String(selectedScientificSite?.name === site.name));
+    const title = document.createElement("strong"); title.textContent = site.name;
+    const description = document.createElement("span"); description.textContent = site.description;
+    const status = document.createElement("small");
+    status.textContent = site.routable ? "Route-enabled · previously tested" : "Information only · coordinates pending";
+    button.append(title, description, status);
+    button.addEventListener("click", () => {
+      updateSciencePanel(site);
+      if (site.routable) {
+        const marker = siteMarkers.get(site.name);
+        if (marker && map.hasLayer(scientificSites)) {
+          map.panTo(marker.getLatLng());
+          marker.openPopup();
+        }
+      }
+    });
+    list.appendChild(button);
+  });
+}
+
+document.querySelectorAll("[data-science-filter]").forEach(button => {
+  button.addEventListener("click", () => {
+    scienceFilter = button.dataset.scienceFilter;
+    document.querySelectorAll("[data-science-filter]").forEach(item => {
+      const active = item === button;
+      item.classList.toggle("active", active);
+      item.setAttribute("aria-pressed", String(active));
+    });
+    renderScientificSelector();
+  });
+});
+
+const siteMarkers = new Map();
 
 // -----------------------------------------------------
 // 8. SCIENTIFIC INFORMATION
@@ -351,6 +408,9 @@ const sites = [
 
 function updateSciencePanel(site) {
   selectedScientificSite = site;
+  renderScientificSelector();
+  const assign = document.getElementById("science-assign-destination");
+  if (assign) { assign.disabled = !site.routable; assign.textContent = site.routable ? "Set as Mission Destination" : "Routing unavailable: coordinates unverified"; }
 
   setText("science-title", site.name);
   setText("science-description", site.description);
@@ -371,7 +431,10 @@ function updateSciencePanel(site) {
 // -----------------------------------------------------
 
 function setMissionDestination(site) {
-  if (!site) return;
+  if (!site || !site.routable || !Number.isFinite(site.latitude) || !Number.isFinite(site.longitude)) {
+    setStatus("Routing unavailable: site coordinates or coverage not verified.");
+    return;
+  }
 
   missionDestination = site;
   selectedScientificSite = site;
@@ -497,7 +560,7 @@ function createSitePopup(site) {
   return popup;
 }
 
-sites.forEach(site => {
+sites.filter(site => site.routable).forEach(site => {
   const marker = L.circleMarker(
     marsToMap(
       site.latitude,
@@ -533,10 +596,11 @@ sites.forEach(site => {
   });
 
   marker.addTo(scientificSites);
+  siteMarkers.set(site.name, marker);
 });
 
 // -----------------------------------------------------
-// 11. BASE CAMP ALPHA
+// 11. BASECAMP
 // -----------------------------------------------------
 
 const baseCampMarker = L.circleMarker(
@@ -554,14 +618,14 @@ const baseCampMarker = L.circleMarker(
 ).addTo(map);
 
 baseCampMarker.bindTooltip(
-  "BASE CAMP ALPHA",
+  "BASECAMP",
   {
     direction: "top"
   }
 );
 
 baseCampMarker.bindPopup(
-  "<strong>BASE CAMP ALPHA</strong>" +
+  "<strong>BASECAMP</strong>" +
   "<p>Hypothetical human exploration base camp</p>" +
   "<p>Terrain assessment loading...</p>"
 );
@@ -576,7 +640,7 @@ baseCampMarker.on("click", event => {
 
 layerControl.addOverlay(
   baseCampMarker,
-  "Base Camp Alpha"
+  "Basecamp"
 );
 
 // -----------------------------------------------------
@@ -616,7 +680,7 @@ async function assessBaseCamp() {
     );
 
     baseCampMarker.setPopupContent(
-      "<strong>BASE CAMP ALPHA</strong>" +
+      "<strong>BASECAMP</strong>" +
       `<p>${data.assessment}</p>` +
       "<p>Terrain-only screening</p>" +
       "<small>Hypothetical. Not landing-certified.</small>"
@@ -1380,6 +1444,16 @@ if (ctxCheckbox) {
   );
 }
 
+if (hiriseCheckbox) {
+  hiriseCheckbox.addEventListener("change", event => {
+    if (event.target.checked) {
+      map.addLayer(hirise);
+    } else {
+      map.removeLayer(hirise);
+    }
+  });
+}
+
 if (coverageCheckbox) {
   coverageCheckbox.addEventListener(
     "change",
@@ -1422,6 +1496,10 @@ map.on("overlayadd", event => {
     ctxCheckbox.checked = true;
   }
 
+  if (event.layer === hirise && hiriseCheckbox) {
+    hiriseCheckbox.checked = true;
+  }
+
   if (
     event.layer === coverageOutline &&
     coverageCheckbox
@@ -1441,6 +1519,10 @@ map.on("overlayremove", event => {
 
   if (event.layer === ctx && ctxCheckbox) {
     ctxCheckbox.checked = false;
+  }
+
+  if (event.layer === hirise && hiriseCheckbox) {
+    hiriseCheckbox.checked = false;
   }
 
   if (
@@ -1506,9 +1588,15 @@ setStatus(
 loadHazardOverlay();
 assessBaseCamp();
 
-console.log("MARS PATHFINDER");
+console.log("Jezero PATHFINDER");
 console.log("Human Exploration System");
-console.log("Base Camp Alpha:", BASE_CAMP);
+console.log("Basecamp:", BASE_CAMP);
 console.log("MOLA URL:", MOLA_URL);
 console.log("CTX URL:", CTX_URL);
 console.log("CTX coverage:", ctxCoverage.toBBoxString());
+
+// Science selector initial state and sidebar destination action.
+document.getElementById("science-assign-destination")?.addEventListener("click", () => {
+  setMissionDestination(selectedScientificSite);
+});
+updateSciencePanel(sites[0]);

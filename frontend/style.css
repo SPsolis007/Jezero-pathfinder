@@ -1,6 +1,6 @@
 
 /* =====================================================
-   MARS PATHFINDER
+   Jezero PATHFINDER
    HUMAN EXPLORATION INTERFACE
    ===================================================== */
 
@@ -703,3 +703,16 @@ select:focus {
 .mission-budget-fill { height: 100%; background: #49ce92; border-radius: 9px; transition: width .2s ease; }
 .mission-budget-fill.over-budget { background: #e46565; }
 .mission-warning-note { padding: 7px 0 !important; color: var(--muted); font-size: 11px !important; }
+
+/* Six-site science selector */
+.site-count { float: right; color: var(--muted); font-size: 11px; font-weight: 400; }
+.science-filter-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.science-filter { border: 1px solid var(--border); background: #0c1725; color: var(--muted); border-radius: 20px; padding: 7px 10px; font-size: 11px; }
+.science-filter.active { border-color: var(--cyan); color: var(--cyan); background: #112b37; }
+.science-site-list { display: grid; gap: 7px; max-height: 260px; overflow-y: auto; }
+.science-site-item { display: grid; gap: 5px; text-align: left; width: 100%; background: #0c1725; border: 1px solid var(--border); border-radius: 7px; color: var(--text); padding: 10px; }
+.science-site-item.selected { border-color: var(--cyan); background: #142b3a; }
+.science-site-item strong { font-size: 12px; }
+.science-site-item span { color: var(--muted); font-size: 11px; line-height: 1.45; }
+.science-site-item small { color: var(--warning); font-size: 10px; }
+#science-assign-destination:disabled { opacity: .55; cursor: not-allowed; }
