@@ -2,9 +2,11 @@
 
 **Terrain-aware mission planning for the exploration of Jezero Crater, Mars**
 
-*A NASA Space Apps Challenge project for **Interplanetary Survival Guide: Martian Map***
+*A NASA Space Apps Challenge 2026 project for the challenge **Interplanetary Survival Guide: Martian Map**.*
 
-[![Project status](https://img.shields.io/badge/status-research%20prototype-2563eb)](#important-limitations) [![NASA data](https://img.shields.io/badge/data-NASA%20Mars%20Trek%20%7C%20PDS-f97316)](#data-sources-and-attribution) [![Python](https://img.shields.io/badge/backend-Python%20%2B%20FastAPI-0f766e)](#technology-stack)
+[![Project status](https://img.shields.io/badge/status-research%20prototype-2563eb)](#important-limitations)
+[![NASA data](https://img.shields.io/badge/data-NASA%20Mars%20Trek%20%7C%20PDS-f97316)](#data-sources-and-attribution)
+[![Backend](https://img.shields.io/badge/backend-Python%20%2B%20FastAPI-0f766e)](#technology-stack)
 
 ## Overview
 
@@ -32,7 +34,7 @@ Jezero Pathfinder addresses the NASA Space Apps **Interplanetary Survival Guide:
 | **Point-to-point navigation** | Lets users choose start and destination coordinates by clicking the map or selecting listed locations. |
 | **A* route comparison** | Compares shortest and hazard-weighted *safer* traversable paths, subject to raster and search limits. |
 | **Resource estimates** | Reports route length, travel time, terrain-adjusted energy, reserve margins and whether a one-way trip falls within the modelled budget. |
-| **Basecamp mission analysis** | Screens a hypothetical Basecamp location and evaluates an excursion with a modelled return journey. |
+| **Basecamp mission analysis** | Screens a hypothetical **Basecamp** location and evaluates an excursion with a modelled return journey. |
 | **Environmental intelligence** | Shows historical air-temperature and atmospheric-pressure measurements from Perseverance MEDA, including sensor selection and time-series plots. |
 
 ### Scientific investigation sites
@@ -98,27 +100,84 @@ The exported frontend data is stored in `frontend/assets/meda_sol1859_summary.js
 
 ## Run locally
 
-### 1. Clone the project
+You can run Jezero Pathfinder locally on **macOS or Windows**. The frontend and backend run in separate terminal windows, and both must remain running while you use the application.
+
+### Prerequisites
+
+- Python installed and available from the terminal. Use a version compatible with the packages listed in `requirements.txt` and available Rasterio/PyProj wheels.
+- Git.
+- An internet connection for NASA Mars Trek imagery and other remotely loaded map resources.
+- The required terrain rasters and MEDA summary data described in [Confirm the project data](#confirm-the-project-data).
+
+Check your Python installation:
+
+**macOS**
+```bash
+python3 --version
+```
+
+**Windows (PowerShell)**
+```powershell
+py --version
+```
+
+### 1. Clone the repository
+
+The clone and directory commands are the same on both platforms:
 
 ```bash
 git clone https://github.com/SPsolis007/Jezero-Pathfinder.git
 cd Jezero-Pathfinder
 ```
 
-### 2. Create a Python environment
+### 2. Create and activate a virtual environment
 
-Use a Python version compatible with the installed FastAPI, Pydantic 2, Rasterio and PyProj distributions. On macOS/Linux:
-
+**macOS**
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install --upgrade pip
-python3 -m pip install fastapi 'pydantic>=2' uvicorn numpy rasterio pyproj
 ```
 
-**Dependency note:** At the time this README was prepared, `requirements.txt` in the public repository was **empty**. The command above lists the directly imported backend dependencies rather than claiming a verified, version-locked environment. Pandas is additionally needed if regenerating the MEDA analysis outputs from raw CSVs.
+**Windows (PowerShell)**
+```powershell
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+```
 
-### 3. Confirm terrain inputs
+If PowerShell blocks the activation script, allow it for the current terminal session and try again:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.venv\Scripts\Activate.ps1
+```
+
+**Windows (Command Prompt) alternative**
+```bat
+py -m venv .venv
+.venv\Scripts\activate.bat
+```
+
+When the environment is active, your terminal prompt should show `(.venv)`.
+
+### 3. Install Python dependencies
+
+The repository includes a `requirements.txt` file. With the virtual environment activated, run:
+
+**macOS**
+```bash
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
+```
+
+**Windows**
+```powershell
+py -m pip install --upgrade pip
+py -m pip install -r requirements.txt
+```
+
+If the `py` command is unavailable on your Windows installation, use `python` instead. If installation fails for Rasterio or PyProj, check that your Python version is supported by the package wheels and consult the relevant package installation documentation.
+
+### Confirm the project data
 
 The backend expects these paths relative to the repository root:
 
@@ -132,29 +191,58 @@ data/
     └── jezero_tri.tif
 ```
 
-Ensure the three processed rasters exist and have matching CRS, dimensions and georeferencing. Large data files may need to be obtained separately if absent from your clone. The browser's weather view also requires `frontend/assets/meda_sol1859_summary.json`.
+Ensure the three processed rasters exist and have matching CRS, dimensions and georeferencing. Large data files may need to be obtained separately if absent from your clone. The browser's Weather view also requires:
 
-### 4. Start the API
+```text
+frontend/assets/meda_sol1859_summary.json
+```
 
-From the **repository root** in the activated virtual environment:
+### 4. Start the backend API
 
+Run this command from the **repository root**, with the virtual environment activated.
+
+**macOS**
 ```bash
 python3 -m uvicorn backend.main:app --reload --port 8000
 ```
 
+**Windows**
+```powershell
+py -m uvicorn backend.main:app --reload --port 8000
+```
+
+If `py` is unavailable, use `python -m uvicorn ...` instead.
+
 Test the backend at [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health). Interactive API documentation is available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+
+Keep this terminal open.
 
 ### 5. Start the frontend
 
-In a **second terminal**, from the same repository root:
+Open a **second terminal**, navigate to the repository root, and activate the virtual environment again if necessary.
 
+**macOS**
 ```bash
 python3 -m http.server 5500 --directory frontend
 ```
 
-Open [http://localhost:5500/index.html](http://localhost:5500/index.html).
+**Windows**
+```powershell
+py -m http.server 5500 --directory frontend
+```
 
-Both servers must remain running. The frontend currently requests the API at `http://127.0.0.1:8000`; update the `API` constant in `frontend/script.js` if deploying to a different backend address. NASA Mars Trek imagery also requires network access.
+Open [http://localhost:5500/index.html](http://localhost:5500/index.html) in your browser.
+
+Keep this terminal open as well. The frontend currently requests the API at `http://127.0.0.1:8000`; update the `API` constant in `frontend/script.js` if deploying to a different backend address. NASA Mars Trek imagery also requires network access.
+
+### Troubleshooting
+
+- **`python3` or `py` is not recognised:** Confirm Python is installed and added to your system PATH. On Windows, try `python` if the Python Launcher (`py`) is unavailable.
+- **PowerShell will not activate `.venv`:** Use the current-session execution-policy command shown above, or use the Command Prompt activation alternative.
+- **`ModuleNotFoundError`:** Confirm the virtual environment is active and install dependencies again using `python -m pip install -r requirements.txt` (or `py -m pip` on Windows).
+- **Raster file not found or raster errors:** Confirm that the required GeoTIFF files exist in the expected `data/` folders and that their CRS and dimensions are compatible.
+- **Frontend cannot reach the API:** Confirm the backend is running on port `8000` and that the frontend API address matches it.
+- **Map imagery does not load:** Check your internet connection. NASA Mars Trek imagery is loaded remotely.
 
 ## Repository structure
 
@@ -178,15 +266,21 @@ scripts/                  # Diagnostics and validation utilities
 data/                     # Original and processed terrain/mission data
 docs/                     # Project documentation
 README.md
-requirements.txt          # Currently empty in the public repository
+requirements.txt          # Python dependencies
 ```
 
 ## Validation and known limitations
 
 The project includes scripts for checking scientific-site coordinates against the local hazard raster and for testing routes. For example, from the repository root with dependencies installed:
 
+**macOS**
 ```bash
 python3 scripts/check_six_site_coverage.py
+```
+
+**Windows**
+```powershell
+py scripts/check_six_site_coverage.py
 ```
 
 This reports raster coverage and each sample point's local hazard class. **It does not guarantee that an A* route exists**, nor does it establish human-safe terrain. Review all route outputs and error messages before drawing conclusions.
@@ -200,7 +294,7 @@ Additional limitations:
 - Weather observations are **historical and local**; they are not live telemetry, forecasts or inputs to the current route-energy calculation.
 - The software does not model radiation dose, breathable atmosphere, communications, rescue logistics, human physiological risk or equipment certification.
 - Modelled budget compliance means only that the **selected scenario satisfies the prototype's mathematical assumptions**.
-- Public deployment and end-to-end installation from a clean clone have not been independently verified as part of preparing this README.
+- Public deployment and end-to-end installation from a clean clone have not been independently verified.
 
 ## Data sources and attribution
 
