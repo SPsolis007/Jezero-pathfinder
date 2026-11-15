@@ -19,18 +19,24 @@
     ...sites.filter(s => s.routable && Number.isFinite(s.latitude) && Number.isFinite(s.longitude))
   ];
   const siteByName = new Map(locations.map(p => [p.name, p]));
-  const initialDest = siteByName.has("Rochette") ? "Rochette" : locations[1]?.name;
-  let start = {...locations[0]};
-  let end = initialDest ? {...siteByName.get(initialDest)} : null;
-  let pickMode = null;
+  let start = null;
+  let end = null;
   let version = 0;
+  let pickMode = null;
+  let calculating = false;
 
   const selectStart = byId("wp-start-select");
   const selectEnd = byId("wp-end-select");
-  const choices = [
-    ...locations.map(p => ({value:p.name, label:p.name})),
-    {value:"__custom__",label:"Selected on map"}
-  ];
+  for (const [select, label] of [
+    [selectStart, "Select start point"],
+    [selectEnd, "Select destination"]
+  ]) {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = label;
+    select.appendChild(placeholder);
+  }
+  const choices = locations.map(p => ({value:p.name, label:p.name}));
   for (const select of [selectStart, selectEnd]) {
     for (const option of choices) {
       const element = document.createElement("option");
@@ -39,8 +45,8 @@
       select.appendChild(element);
     }
   }
-  selectStart.value = "Basecamp";
-  selectEnd.value = initialDest || "__custom__";
+  selectStart.value = "";
+  selectEnd.value = "";
 
   const fmt = v => Number(v).toFixed(3);
   function setMessage(message) {
@@ -71,25 +77,37 @@
       : "Destination: not selected";
     drawEndpoint(wpStartLayer, start, "#ef4444", "START");
     drawEndpoint(wpEndLayer, end, "#ef4444", "END");
+    byId("wp-calculate").disabled = !start || !end || calculating;
   }
   function assignPoint(which, point) {
     resetRoutes();
     if (which === "start") start = {...point};
     else end = {...point};
     const selector = which === "start" ? selectStart : selectEnd;
-    selector.value = siteByName.has(point.name) ? point.name : "__custom__";
+    selector.value = siteByName.has(point.name) ? point.name : "";
     sync();
   }
   selectStart.addEventListener("change", () => {
-    if (siteByName.has(selectStart.value)) assignPoint("start", siteByName.get(selectStart.value));
-    else { selectStart.value = start?.name && siteByName.has(start.name) ? start.name : "__custom__"; }
+    if (siteByName.has(selectStart.value)) {
+      assignPoint("start", siteByName.get(selectStart.value));
+    } else {
+      resetRoutes();
+      start = null;
+      sync();
+    }
   });
   selectEnd.addEventListener("change", () => {
-    if (siteByName.has(selectEnd.value)) assignPoint("end", siteByName.get(selectEnd.value));
-    else { selectEnd.value = end?.name && siteByName.has(end.name) ? end.name : "__custom__"; }
+    if (siteByName.has(selectEnd.value)) {
+      assignPoint("end", siteByName.get(selectEnd.value));
+    } else {
+      resetRoutes();
+      end = null;
+      sync();
+    }
   });
 
   function setPickMode(mode) {
+    if (mode) map.fire("measurementfinish");
     pickMode = pickMode === mode ? null : mode;
     byId("wp-pick-start").classList.toggle("wp-active", pickMode === "start");
     byId("wp-pick-end").classList.toggle("wp-active", pickMode === "end");
@@ -98,6 +116,9 @@
   }
   byId("wp-pick-start").addEventListener("click", () => setPickMode("start"));
   byId("wp-pick-end").addEventListener("click", () => setPickMode("end"));
+  map.on("measurementstart", () => {
+    if (pickMode) setPickMode(null);
+  });
  
 const mapContainer = map.getContainer();
 
@@ -195,6 +216,7 @@ mapContainer.addEventListener("click", function (event) {
   }
   byId("wp-calculate").addEventListener("click", async () => {
     const button = byId("wp-calculate");
+    if (!start || !end || calculating) return;
     const mine = ++version;
     wpRouteLayer.clearLayers();
     byId("wp-results").replaceChildren();
@@ -212,6 +234,7 @@ mapContainer.addEventListener("click", function (event) {
         energy_reserve_fraction:0.25,
         time_reserve_fraction:0.20
       };
+      calculating = true;
       button.disabled = true;
       button.textContent = "Calculating both routes...";
       setMessage("Evaluating hazard exposure, slope, ruggedness, time and energy...");
@@ -235,7 +258,8 @@ mapContainer.addEventListener("click", function (event) {
     } catch (err) {
       if (mine === version) setMessage(`Unable to calculate: ${err.message}`);
     } finally {
-      button.disabled = false;
+      calculating = false;
+      sync();
       button.textContent = "Compare two-point A* routes";
     }
   });

@@ -19,7 +19,7 @@
 
   <header class="topbar">
     <div class="brand">
-      <div class="brand-symbol">J</div>
+      <img class="brand-logo" src="assets/mars-logo.svg" alt="Mars planet logo">
 
       <div>
         <h1>Jezero PATHFINDER</h1>
@@ -106,24 +106,6 @@
           <p id="basecamp-details" class="small-text"></p>
         </div>
 
-        <h3>Scientific Objective</h3>
-
-        <label for="objective">Investigation focus</label>
-
-        <select id="objective">
-          <option value="sedimentary">
-            Investigate sedimentary deposits
-          </option>
-
-          <option value="geology">
-            Explore geological boundaries
-          </option>
-
-          <option value="minerals">
-            Investigate mineral evidence
-          </option>
-        </select>
-
         <div class="info-card">
           <strong>Map Interaction</strong>
 
@@ -164,11 +146,6 @@
           </p>
 
           <button id="science-assign-destination" type="button" class="primary-button">Set as Mission Destination</button>
-
-          <div class="science-detail">
-            <strong>Scientific Objective</strong>
-            <p id="science-objective">Not selected</p>
-          </div>
 
           <div class="science-detail">
             <strong>Scientific Significance</strong>
@@ -512,9 +489,37 @@
 
       <div id="map"></div>
 
-      <div class="map-overlay-label">
-        JEZERO CRATER
-        <span>MARS SURFACE EXPLORATION</span>
+      <div id="mars-measure-control" class="mars-measure-control">
+        <div class="map-tool-header">
+          <button id="mars-measure-toggle" class="measure-toggle" type="button">Measure Distance</button>
+          <button id="map-reset-view" class="map-reset-button" type="button" aria-label="Return to Basecamp" title="Return to Basecamp">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M12 14v4m-2-2h4"></path>
+            </svg>
+          </button>
+        </div>
+        <div id="mars-measure-tools" class="mars-measure-tools" hidden>
+          <div class="measure-total">
+            <span>Total distance</span>
+            <output id="mars-measure-total" aria-live="polite">0 m</output>
+          </div>
+          <div class="measure-actions">
+            <button id="mars-measure-undo" type="button" disabled>Undo Last Point</button>
+            <button id="mars-measure-clear" type="button" disabled>Clear</button>
+            <button id="mars-measure-finish" type="button" disabled>Finish</button>
+          </div>
+          <p class="measure-help">Click the map to add points. Distance is a Mars great-circle surface estimate (mean radius 3,389.5 km); terrain and elevation are not included.</p>
+        </div>
+      </div>
+
+      <div class="mars-north-indicator" role="img" aria-label="North is up">
+        <span>N</span>
+        <span class="north-arrow" aria-hidden="true">↑</span>
+      </div>
+
+      <div id="mars-scale" class="mars-scale" role="img" aria-label="Mars surface scale bar" title="Mars mean-radius great-circle distance at this latitude; terrain and elevation are not included.">
+        <span id="mars-scale-label">--</span>
+        <div class="mars-scale-track"><span id="mars-scale-line"></span></div>
       </div>
 
       <div class="map-legend">
@@ -551,7 +556,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="script.js"></script>
   <script src="environment.js"></script>
-
-  <script src="route_planner.js"></script>
+  <script src="route_planner.js?v=20261115-2"></script>
 </body>
 </html>

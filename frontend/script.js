@@ -31,7 +31,6 @@ const BASE_WIDTH = 512;
 const BASE_HEIGHT = 256;
 
 const statusElement = document.getElementById("status");
-const objectiveSelect = document.getElementById("objective");
 const sitesCheckbox = document.getElementById("show-sites");
 const hazardsCheckbox = document.getElementById("show-hazards");
 const ctxCheckbox = document.getElementById("show-ctx");
@@ -137,7 +136,7 @@ const map = L.map("map", {
   crs: L.CRS.Simple,
   minZoom: 12,
   maxZoom: 13,
-  zoomControl: true
+  zoomControl: false
 });
 
 map.setView(
@@ -266,6 +265,169 @@ const layerControl = L.control.layers(
     position: "topright"
   }
 ).addTo(map);
+
+// Cartographic tools use spherical surface distances on Mars, not Leaflet's CRS scale.
+const MARS_MEAN_RADIUS_KM = 3389.5;
+const measurementLayer = L.layerGroup().addTo(map);
+const measurementPoints = [];
+const measureToggle = document.getElementById("mars-measure-toggle");
+const measureTools = document.getElementById("mars-measure-tools");
+const measureTotal = document.getElementById("mars-measure-total");
+const measureUndo = document.getElementById("mars-measure-undo");
+const measureClear = document.getElementById("mars-measure-clear");
+const measureFinish = document.getElementById("mars-measure-finish");
+const resetViewButton = document.getElementById("map-reset-view");
+const scaleElement = document.getElementById("mars-scale");
+const scaleLabel = document.getElementById("mars-scale-label");
+const scaleLine = document.getElementById("mars-scale-line");
+let measurementActive = false;
+
+resetViewButton.addEventListener("click", () => {
+  const defaultZoom = 12;
+  const zoom = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), defaultZoom));
+  map.flyTo(
+    marsToMap(BASE_CAMP.latitude, BASE_CAMP.longitude),
+    zoom,
+    { duration: 1 }
+  );
+});
+
+function marsDistanceMeters(a, b) {
+  const radians = Math.PI / 180;
+  const latitudeA = a.latitude * radians;
+  const latitudeB = b.latitude * radians;
+  const latitudeDelta = latitudeB - latitudeA;
+  const longitudeDelta =
+    ((((b.longitude - a.longitude) + 540) % 360) - 180) * radians;
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(latitudeA) * Math.cos(latitudeB) *
+    Math.sin(longitudeDelta / 2) ** 2;
+  const clampedHaversine = Math.max(0, Math.min(1, haversine));
+  return 2 * MARS_MEAN_RADIUS_KM * 1000 *
+    Math.atan2(Math.sqrt(clampedHaversine), Math.sqrt(1 - clampedHaversine));
+}
+
+function formatMarsDistance(meters) {
+  if (meters >= 1000) {
+    const precision = meters >= 10000 ? 1 : 2;
+    return `${Number((meters / 1000).toFixed(precision))} km`;
+  }
+  return `${Math.round(meters)} m`;
+}
+
+function renderMeasurement() {
+  measurementLayer.clearLayers();
+  const mapPoints = measurementPoints.map(point =>
+    marsToMap(point.latitude, point.longitude)
+  );
+  if (mapPoints.length > 1) {
+    L.polyline(mapPoints, {
+      color: "#00e5ff",
+      weight: 3,
+      dashArray: "7,5"
+    }).addTo(measurementLayer);
+  }
+  mapPoints.forEach((point, index) => {
+    L.circleMarker(point, {
+      radius: 5,
+      weight: 2,
+      color: "#ffffff",
+      fillColor: "#00e5ff",
+      fillOpacity: 1
+    }).addTo(measurementLayer).bindTooltip(`Measure point ${index + 1}`);
+  });
+
+  const total = measurementPoints.reduce((distance, point, index) =>
+    index === 0
+      ? distance
+      : distance + marsDistanceMeters(measurementPoints[index - 1], point),
+  0);
+  measureTotal.textContent = formatMarsDistance(total);
+  measureTools.hidden = !measurementActive && measurementPoints.length === 0;
+  measureToggle.textContent = measurementActive
+    ? "Cancel Measurement"
+    : "Measure Distance";
+  measureToggle.classList.toggle("measure-active", measurementActive);
+  measureUndo.disabled = measurementPoints.length === 0;
+  measureClear.disabled = measurementPoints.length === 0;
+  measureFinish.disabled = !measurementActive || measurementPoints.length < 2;
+}
+
+function startMeasurement() {
+  measurementPoints.length = 0;
+  measurementActive = true;
+  map.closePopup();
+  map.fire("measurementstart");
+  map.getContainer().style.cursor = "crosshair";
+  renderMeasurement();
+}
+
+function finishMeasurement() {
+  measurementActive = false;
+  map.getContainer().style.cursor = "";
+  renderMeasurement();
+}
+
+map.on("measurementfinish", () => {
+  if (measurementActive) finishMeasurement();
+});
+
+measureToggle.addEventListener("click", () => {
+  if (measurementActive) {
+    measurementPoints.length = 0;
+    finishMeasurement();
+  } else {
+    startMeasurement();
+  }
+});
+measureUndo.addEventListener("click", () => {
+  measurementPoints.pop();
+  renderMeasurement();
+});
+measureClear.addEventListener("click", () => {
+  measurementPoints.length = 0;
+  renderMeasurement();
+});
+measureFinish.addEventListener("click", finishMeasurement);
+
+map.getContainer().addEventListener("click", event => {
+  if (!measurementActive) return;
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.closest(".leaflet-control, .leaflet-popup")) return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const position = map.mouseEventToLatLng(event);
+  const point = mapToMars(position);
+  if (!Number.isFinite(point.latitude) || !Number.isFinite(point.longitude)) return;
+  measurementPoints.push(point);
+  renderMeasurement();
+}, true);
+
+function updateMarsScale() {
+  const size = map.getSize();
+  const maxWidth = Math.min(120, size.x - 32);
+  if (maxWidth <= 0 || size.y <= 0) return;
+
+  const right = size.x - 12;
+  const y = Math.min(size.y - 1, scaleElement.offsetTop + 22);
+  const start = mapToMars(map.containerPointToLatLng([right - maxWidth, y]));
+  const end = mapToMars(map.containerPointToLatLng([right, y]));
+  const maxDistance = marsDistanceMeters(start, end);
+  if (!Number.isFinite(maxDistance) || maxDistance <= 0) return;
+
+  const magnitude = 10 ** Math.floor(Math.log10(maxDistance));
+  const distance = [5, 2, 1]
+    .map(multiplier => multiplier * magnitude)
+    .find(candidate => candidate <= maxDistance) || magnitude / 2;
+  scaleLine.style.width = `${maxWidth * distance / maxDistance}px`;
+  scaleLabel.textContent = formatMarsDistance(distance);
+}
+
+map.on("zoomend moveend", updateMarsScale);
+window.addEventListener("resize", updateMarsScale);
+updateMarsScale();
 
 // -----------------------------------------------------
 // 6. WORKSPACE TABS
@@ -432,7 +594,6 @@ function updateSciencePanel(site) {
 
   setText("science-title", site.name);
   setText("science-description", site.description);
-  setText("science-objective", site.objective);
   setText("science-significance", site.significance);
   setText("science-evidence", site.evidence);
 
@@ -1525,20 +1686,6 @@ if (coverageCheckbox) {
       } else {
         map.removeLayer(coverageOutline);
       }
-    }
-  );
-}
-
-if (objectiveSelect) {
-  objectiveSelect.addEventListener(
-    "change",
-    () => {
-      const selected =
-        objectiveSelect.selectedOptions[0];
-
-      setStatus(
-        `Scientific objective: ${selected.text}`
-      );
     }
   );
 }

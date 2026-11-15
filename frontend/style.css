@@ -62,16 +62,13 @@ button {
   gap: 13px;
 }
 
-.brand-symbol {
+.brand-logo {
+  display: block;
+  flex: 0 0 38px;
   width: 38px;
   height: 38px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--cyan);
-  border-radius: 8px;
-  color: var(--cyan);
-  font-size: 21px;
-  font-weight: 800;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .brand h1 {
@@ -408,28 +405,185 @@ select:focus {
   background: #080e17;
 }
 
-.map-overlay-label {
+.mars-measure-control {
   position: absolute;
-  z-index: 500;
-  top: 18px;
-  left: 20px;
-  pointer-events: none;
-  padding: 12px 15px;
+  z-index: 650;
+  top: 12px;
+  left: 12px;
+  width: min(250px, calc(100% - 24px));
+  padding: 8px;
   border: 1px solid #33495b;
-  border-radius: 7px;
-  background: rgba(8, 17, 29, 0.88);
-  color: white;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 1px;
+  border-radius: 8px;
+  background: rgba(8, 17, 29, 0.94);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.map-overlay-label span {
-  display: block;
-  margin-top: 5px;
+.map-tool-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mars-measure-control button {
+  min-height: 30px;
+  border: 1px solid #40556a;
+  border-radius: 5px;
+  background: #142638;
+  color: var(--text);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.mars-measure-control button:hover:not(:disabled) {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.mars-measure-control button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mars-measure-control .measure-toggle {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.map-reset-button {
+  display: grid;
+  flex: 0 0 34px;
+  place-items: center;
+  width: 34px;
+  padding: 4px;
+}
+
+.map-reset-button svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.map-reset-button:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.mars-measure-control .measure-active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+.mars-measure-tools {
+  display: grid;
+  gap: 7px;
+  padding-top: 8px;
+}
+
+.mars-measure-tools[hidden] {
+  display: none;
+}
+
+.measure-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
   color: var(--muted);
   font-size: 10px;
-  font-weight: 500;
+}
+
+.measure-total output {
+  color: var(--cyan);
+  font-weight: 700;
+}
+
+.measure-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.measure-actions button {
+  flex: 1;
+  padding: 4px;
+}
+
+.measure-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.mars-north-indicator {
+  position: absolute;
+  z-index: 600;
+  top: 62px;
+  right: 12px;
+  display: grid;
+  justify-items: center;
+  width: 34px;
+  padding: 4px 0;
+  border: 1px solid #33495b;
+  border-radius: 6px;
+  background: rgba(8, 17, 29, 0.92);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.north-arrow {
+  color: var(--cyan);
+  font-size: 18px;
+  line-height: 16px;
+}
+
+.mars-scale {
+  position: absolute;
+  z-index: 600;
+  top: 112px;
+  right: 12px;
+  width: 120px;
+  color: var(--text);
+  font-size: 10px;
+  text-align: right;
+  pointer-events: none;
+  text-shadow: 0 1px 3px #000;
+}
+
+.mars-scale-track {
+  display: flex;
+  justify-content: flex-end;
+  height: 9px;
+}
+
+.mars-scale-track span {
+  position: relative;
+  min-width: 1px;
+  height: 7px;
+  border-bottom: 2px solid var(--text);
+}
+
+.mars-scale-track span::before,
+.mars-scale-track span::after {
+  position: absolute;
+  bottom: -2px;
+  height: 7px;
+  border-left: 2px solid var(--text);
+  content: "";
+}
+
+.mars-scale-track span::before {
+  left: 0;
+}
+
+.mars-scale-track span::after {
+  right: 0;
 }
 
 .map-legend {
@@ -656,11 +810,20 @@ select:focus {
     flex: 1;
   }
 
-  .map-overlay-label {
-    top: 10px;
-    left: 10px;
-    padding: 8px;
-    font-size: 10px;
+  .mars-measure-control {
+    top: 8px;
+    left: 8px;
+    width: min(220px, calc(100% - 16px));
+  }
+
+  .mars-north-indicator {
+    top: 58px;
+    right: 8px;
+  }
+
+  .mars-scale {
+    top: 106px;
+    right: 8px;
   }
 
   .map-legend {
