@@ -60,6 +60,7 @@
     version++;
     wpRouteLayer.clearLayers();
     byId("wp-results").replaceChildren();
+    resetMissionTelemetry();
   }
   function drawEndpoint(group, point, color, letter) {
     group.clearLayers();
@@ -220,6 +221,7 @@ mapContainer.addEventListener("click", function (event) {
     const mine = ++version;
     wpRouteLayer.clearLayers();
     byId("wp-results").replaceChildren();
+    resetMissionTelemetry();
     try {
       if (!start || !end) throw new Error("Choose both start and destination.");
       if (start.latitude === end.latitude && start.longitude === end.longitude)
@@ -251,6 +253,19 @@ mapContainer.addEventListener("click", function (event) {
           byId("wp-results").appendChild(msg);
         }
       });
+      const telemetryPlan = results[0].status === "fulfilled"
+        ? results[0].value
+        : results[1].status === "fulfilled"
+          ? results[1].value
+          : null;
+      if (telemetryPlan) {
+        updateMissionTelemetry({
+          distanceKm: telemetryPlan.mission.distance_km,
+          energyKwh: telemetryPlan.mission.required_energy_kwh,
+          durationHours: telemetryPlan.mission.travel_hours,
+          classTwoFraction: telemetryPlan.route.class_2_fraction
+        });
+      }
       const footnote = document.createElement("p");
       footnote.className = "small-text";
       footnote.textContent = "One-way prototype estimates only. Not a certified human or rover route. For Basecamp returns, use the Mission tab.";

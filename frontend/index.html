@@ -42,6 +42,28 @@
         <p>Basecamp Expedition</p>
       </div>
 
+      <section class="telemetry-strip" aria-label="Mission telemetry">
+        <p class="telemetry-heading">MISSION TELEMETRY <span>MODEL OUTPUTS</span></p>
+        <div class="telemetry-grid">
+          <div class="telemetry-item">
+            <span>Route distance</span>
+            <output id="hud-route-distance">--</output>
+          </div>
+          <div class="telemetry-item">
+            <span>Estimated energy</span>
+            <output id="hud-estimated-energy">--</output>
+          </div>
+          <div class="telemetry-item">
+            <span>Mission duration</span>
+            <output id="hud-mission-duration">--</output>
+          </div>
+          <div class="telemetry-item">
+            <span>Terrain concern</span>
+            <output id="hud-terrain-concern">--</output>
+          </div>
+        </div>
+      </section>
+
       <nav class="workspace-tabs" aria-label="Mission tools">
         <button class="workspace-tab active"
                 data-tab="explore"
@@ -477,10 +499,12 @@
       </section>
 
       <div class="sidebar-footer">
-        <span class="status-dot"></span>
-        <p id="status">
-          Initialising Mars Pathfinder...
-        </p>
+        <span class="status-dot" aria-hidden="true"></span>
+        <div class="sidebar-status-copy">
+          <span class="status-label">APPLICATION STATUS</span>
+          <p id="status">Initialising Mars Pathfinder...</p>
+          <span class="prototype-note">RESEARCH PROTOTYPE · NOT OPERATIONALLY CERTIFIED</span>
+        </div>
       </div>
 
     </aside>

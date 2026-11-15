@@ -31,6 +31,7 @@ const BASE_WIDTH = 512;
 const BASE_HEIGHT = 256;
 
 const statusElement = document.getElementById("status");
+const INITIAL_STATUS = "Jezero mission map ready. Loading terrain data...";
 const sitesCheckbox = document.getElementById("show-sites");
 const hazardsCheckbox = document.getElementById("show-hazards");
 const ctxCheckbox = document.getElementById("show-ctx");
@@ -55,12 +56,51 @@ function setStatus(message) {
   }
 }
 
+function setStatusAfterInitialization(message) {
+  if (statusElement?.textContent === INITIAL_STATUS) {
+    setStatus(message);
+  }
+}
+
 function setText(id, value) {
   const element = document.getElementById(id);
 
   if (element) {
     element.textContent = String(value);
   }
+}
+
+function resetMissionTelemetry() {
+  setText("hud-route-distance", "--");
+  setText("hud-estimated-energy", "--");
+  setText("hud-mission-duration", "--");
+  setText("hud-terrain-concern", "--");
+}
+
+function updateMissionTelemetry({
+  distanceKm,
+  energyKwh,
+  durationHours,
+  classTwoFraction
+} = {}) {
+  const format = (value, unit, digits = 2) => {
+    if (value === null || value === undefined || value === "" || !Number.isFinite(Number(value))) {
+      return "NOT REPORTED";
+    }
+    return `${Number(value).toFixed(digits)} ${unit}`;
+  };
+  const exposure = Number(classTwoFraction);
+
+  setText("hud-route-distance", format(distanceKm, "km"));
+  setText("hud-estimated-energy", format(energyKwh, "kWh"));
+  setText("hud-mission-duration", format(durationHours, "h"));
+  setText(
+    "hud-terrain-concern",
+    classTwoFraction === null || classTwoFraction === undefined ||
+      !Number.isFinite(exposure)
+      ? "NOT REPORTED"
+      : `${(exposure * 100).toFixed(1)}% CLASS 2`
+  );
 }
 
 function marsToMap(latitude, longitude) {
@@ -619,6 +659,7 @@ function setMissionDestination(site) {
 
   missionDestination = site;
   selectedScientificSite = site;
+  resetMissionTelemetry();
 
   updateSciencePanel(site);
 
@@ -908,6 +949,7 @@ async function assessBaseCamp() {
       "<p>Terrain-only screening</p>" +
       "<small>Hypothetical. Not landing-certified.</small>"
     );
+    setStatusAfterInitialization("Basecamp terrain screening available.");
 
   } catch (error) {
     console.error(
@@ -995,6 +1037,7 @@ async function loadHazardOverlay() {
       hazardLayer,
       "Jezero Terrain Hazards"
     );
+    setStatusAfterInitialization("Terrain hazard overlay available.");
 
     if (hazardsCheckbox?.checked) {
       hazardLayer.addTo(map);
@@ -1130,6 +1173,7 @@ async function calculateMissionRoutes() {
   };
 
   const currentVersion = ++requestVersion;
+  resetMissionTelemetry();
 
   const button = document.getElementById(
     "calculate-routes"
@@ -1164,6 +1208,18 @@ async function calculateMissionRoutes() {
 
     if (currentVersion !== requestVersion) {
       return;
+    }
+
+    const telemetryRoute = responses[0].status === "fulfilled"
+      ? responses[0].value
+      : responses[1].status === "fulfilled"
+        ? responses[1].value
+        : null;
+    if (telemetryRoute) {
+      updateMissionTelemetry({
+        distanceKm: telemetryRoute.distance_km,
+        classTwoFraction: telemetryRoute.class_2_fraction
+      });
     }
 
     const lines = [];
@@ -1555,6 +1611,7 @@ async function analyseRoundTrip() {
   };
 
   const currentVersion = ++requestVersion;
+  resetMissionTelemetry();
 
   const button = document.getElementById(
     "roundtrip-button"
@@ -1578,6 +1635,12 @@ async function analyseRoundTrip() {
 
     routeLayer.clearLayers();
 
+    updateMissionTelemetry({
+      distanceKm: data.mission?.roundtrip_distance_km,
+      energyKwh: data.mission?.travel_energy_kwh,
+      durationHours: data.mission?.total_hours,
+      classTwoFraction: data.outbound?.class_2_fraction
+    });
     displayRoundTrip(data);
     drawRoundTrip(data);
 
@@ -1790,9 +1853,7 @@ ctx.on("tileerror", event => {
 // 24. INITIALISE
 // -----------------------------------------------------
 
-setStatus(
-  "Jezero mission map ready. Loading terrain data..."
-);
+setStatus(INITIAL_STATUS);
 
 loadHazardOverlay();
 assessBaseCamp();
